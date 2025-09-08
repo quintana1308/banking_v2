@@ -832,10 +832,12 @@
 		// ==========================================
 		
 		// Buscar solo registros pendientes (status_id = 1) de la misma cuenta
+		// OPTIMIZACIÓN: Filtrar por fecha para reducir el conjunto de búsqueda
 		$sqlBusqueda = "SELECT c.id, c.amount, c.reference, c.date, c.status_id, c.account
 						FROM $table c
 						WHERE c.status_id = 1
 						AND c.account = '$account'
+						AND c.date = '$fechaFormateada'
 						ORDER BY c.date DESC, c.id ASC";
 		
 		$registros = $this->select_all($sqlBusqueda);
@@ -847,49 +849,47 @@
 		$mejorCoincidencia = null;
 		$mejorStatus = 1; // Por defecto: no conciliado
 		
-		// Evaluar cada registro candidato
+		// ==========================================
+		// PASO 3: BUSCAR COINCIDENCIA EXACTA PRIMERO
+		// ==========================================
+		
+		// Prioridad 1: Buscar coincidencia exacta (referencia + monto + fecha)
 		foreach ($registros as $reg) {
-			// Evaluar coincidencias individuales
 			$coincideReferencia = $this->evaluarCoincidenciaReferencia($refRecibida, $reg['reference'], $digitosReferencia);
 			$coincideMonto = $this->evaluarCoincidenciaMonto($montoRecibido, abs(floatval($reg['amount'])), $diferencialBs);
 			$coincideFecha = $this->evaluarCoincidenciaFecha($fechaRecibida, $reg['date']);
 			
-			/*if($reg['reference'] == '00010880976'){
-
-				$logFile = 'coincidencias_referencia.log';
-    			$fechaActual = date('Y-m-d H:i:s');
-    			$logEntry = "$fechaActual - ref:" . $reg['reference'] . " - " . json_encode($coincideReferencia) . "\n";
-    			file_put_contents($logFile, $logEntry, FILE_APPEND);
-
-				$logFile = 'coincidencias_monto.log';
-    			$fechaActual = date('Y-m-d H:i:s');
-    			$logEntry = "$fechaActual - monto:" . $reg['amount'] . " - " . json_encode($coincideMonto) . "\n";
-    			file_put_contents($logFile, $logEntry, FILE_APPEND);
-
-				$logFile = 'coincidencias_fecha.log';
-    			$fechaActual = date('Y-m-d H:i:s');
-    			$logEntry = "$fechaActual - fecha:" . $reg['date'] . " - " . json_encode($coincideFecha) . "\n";
-    			file_put_contents($logFile, $logEntry, FILE_APPEND);
-			}*/
-			
-			// Contar coincidencias encontradas
-			$coincidenciasEncontradas = 0;
-			if ($coincideReferencia) $coincidenciasEncontradas++;
-			if ($coincideMonto) $coincidenciasEncontradas++;
-			if ($coincideFecha) $coincidenciasEncontradas++;
-			
-			// ==========================================
-			// PASO 4: VALIDAR COINCIDENCIAS MÍNIMAS
-			// ==========================================
-			
-			// Requiere al menos 2 de 3 coincidencias para ser válido
-			if ($coincidenciasEncontradas >= 2) {
+			// Si hay coincidencia exacta en los 3 criterios, es una coincidencia perfecta
+			if ($coincideReferencia && $coincideMonto && $coincideFecha) {
 				$mejorCoincidencia = $reg;
-				
-				// Determinar estatus final basado en autocon/coincidence
 				$mejorStatus = $this->determinarStatusPorAutoconCoincidence($autocon, $coincidence);
+				break; // Tomar la coincidencia exacta
+			}
+		}
+		
+		// ==========================================
+		// PASO 4: SI NO HAY EXACTA, BUSCAR PARCIAL
+		// ==========================================
+		
+		// Si no se encontró coincidencia exacta, buscar coincidencia parcial (2 de 3)
+		if (!$mejorCoincidencia) {
+			foreach ($registros as $reg) {
+				$coincideReferencia = $this->evaluarCoincidenciaReferencia($refRecibida, $reg['reference'], $digitosReferencia);
+				$coincideMonto = $this->evaluarCoincidenciaMonto($montoRecibido, abs(floatval($reg['amount'])), $diferencialBs);
+				$coincideFecha = $this->evaluarCoincidenciaFecha($fechaRecibida, $reg['date']);
 				
-				break; // Tomar la primera coincidencia válida
+				// Contar coincidencias encontradas
+				$coincidenciasEncontradas = 0;
+				if ($coincideReferencia) $coincidenciasEncontradas++;
+				if ($coincideMonto) $coincidenciasEncontradas++;
+				if ($coincideFecha) $coincidenciasEncontradas++;
+				
+				// Requiere al menos 2 de 3 coincidencias para ser válido
+				if ($coincidenciasEncontradas >= 2) {
+					$mejorCoincidencia = $reg;
+					$mejorStatus = $this->determinarStatusPorAutoconCoincidence($autocon, $coincidence);
+					break; // Tomar la primera coincidencia parcial válida
+				}
 			}
 		}
 		
@@ -917,13 +917,17 @@
 	 * @return bool True si coinciden, False si no
 	 */
 	private function evaluarCoincidenciaReferencia($refRecibida, $refBD, $digitosReferencia) {
+		// Limpiar referencias de ceros a la izquierda para comparación
+		$refRecibidaLimpia = ltrim($refRecibida, '0');
+		$refBDLimpia = ltrim($refBD, '0');
+		
 		if ($digitosReferencia === null || $digitosReferencia <= 0) {
 			// Sin reglas: comparación exacta de toda la referencia
-			return $refRecibida == $refBD;
+			return $refRecibidaLimpia == $refBDLimpia;
 		} else {
 			// Con reglas: comparar solo los últimos N dígitos
-			$ultimosRecibida = substr($refRecibida, -$digitosReferencia);
-			$ultimosBD = substr($refBD, -$digitosReferencia);
+			$ultimosRecibida = substr($refRecibidaLimpia, -$digitosReferencia);
+			$ultimosBD = substr($refBDLimpia, -$digitosReferencia);
 			return $ultimosRecibida == $ultimosBD;
 		}
 	}
