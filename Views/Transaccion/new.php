@@ -73,13 +73,21 @@ ob_start();
             <!-- Tarjeta principal del formulario -->
             <div class="futuristic-card-compact glass-effect scale-in">
                 <div class="card-header-compact">
-                    <div class="d-flex align-items-center">
-                        <div class="icon-container me-3">
-                            <i class="fas fa-cloud-upload-alt"></i>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center">
+                            <div class="icon-container me-3">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                            </div>
+                            <div>
+                                <h5 class="mb-0 card-title-compact">Subir Archivo de Movimientos</h5>
+                                <small class="text-muted">Selecciona el período y banco para cargar los movimientos</small>
+                            </div>
                         </div>
-                        <div>
-                            <h5 class="mb-0 card-title-compact">Subir Archivo de Movimientos</h5>
-                            <small class="text-muted">Selecciona el período y banco para cargar los movimientos</small>
+                        <div class="header-actions">
+                            <a href="<?= base_url() ?>/transaccion" class="btn-back-header">
+                                <i class="fas fa-arrow-left me-2"></i>
+                                Volver al Listado
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -278,6 +286,33 @@ ob_start();
     padding: 1rem 1.5rem;
     border-bottom: 1px solid var(--glass-border, rgba(102, 126, 234, 0.2));
     background: rgba(102, 126, 234, 0.05);
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+}
+
+.btn-back-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+}
+
+.btn-back-header:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    color: white;
+    text-decoration: none;
 }
 
 .card-title-compact {
@@ -701,6 +736,37 @@ ob_start();
 .glass-effect {
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
+}
+
+/* Responsive Design para el botón de regresar */
+@media (max-width: 768px) {
+    .card-header-compact {
+        padding: 1rem;
+    }
+    
+    .card-header-compact .d-flex {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 1rem;
+    }
+    
+    .header-actions {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .btn-back-header {
+        padding: 10px 20px;
+        font-size: 0.9rem;
+        width: auto;
+    }
+}
+
+@media (max-width: 576px) {
+    .btn-back-header {
+        font-size: 0.85rem;
+        padding: 8px 16px;
+    }
 }
 </style>
 
