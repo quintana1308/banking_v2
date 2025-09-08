@@ -257,8 +257,6 @@
 			'sin_coincidencia' => $totalSinCoincidencia // Total sin conciliar
 		];
 
-		// Registrar resultado final en log
-		$this->registrarLogMovimientos($resultadoFinal, 'RESULTADO_FINAL');
 
 		return $resultadoFinal;
 	}
@@ -439,143 +437,6 @@
 			}
 		}
 	}
-
-		// ============================================
-		// FUNCIONES DE CONCILIACIÓN
-		// ============================================
-
-		//OBTENER TODAS LAS EMPRESAS SEGUN SU ID
-		public function getEnterprise($id)
-		{
-			$sql = "SELECT * FROM empresa WHERE id = '$id'";
-			$requestEnterprise = $this->select($sql);
-			
-			return $requestEnterprise;
-		}
-
-		//VALIDO LOS MOVIMIENTOS CONSOLIDADOS Y NO CONSOLIDADOS Y QUE COINCIDIERON
-		public function validateConciliation($movimientos)
-		{			
-			$totalCompleto = 0;
-			$totalParcial = 0;
-			$totalSinCoincidencia = 0;
-			
-			$json = json_decode($movimientos, true);
-	
-			foreach ($json['msg'] as $mov) {
-				$bank = $mov['bank'];
-				$account = $mov['account'];
-				$rif = $mov['rif'];
-				$token = $mov['token'];
-				$refRecibida = $mov['reference'];
-				$fechaRecibida = $mov['date'];
-				//$montoRecibido = floatval($mov['amount']);
-				$montoRecibido = abs(floatval($mov['amount']));
-				
-				// Obtener reglas desde banco
-				$sqlReglas = "SELECT concibanc_monto AS monto, concibanc_reference AS reference 
-							  FROM banco b
-							  INNER JOIN empresa e ON e.id = b.id_enterprise
-							  WHERE b.id_bank = '$bank' 	
-							  AND b.account = '$account' 
-							  AND e.rif = '$rif'
-							  AND e.token = '$token'";
-				
-				
-				
-				$reglas = $this->select($sqlReglas);
-				
-				$reglaMonto = isset($reglas['monto']) ? floatval($reglas['monto']) : null;
-				$reglaReferencia = isset($reglas['reference']) ? intval($reglas['reference']) : null;
-				
-				$sqlTable = "SELECT * FROM empresa WHERE rif = '$rif' AND token = '$token'";
-				$requestEnterprise = $this->select($sqlTable);
-				$table = $requestEnterprise['table'];
-
-				// Buscar todos los posibles registros existentes con mismo banco, cuenta y fecha
-				$sqlBusqueda = "SELECT c.id, c.amount, c.reference, c.date FROM $table c
-								INNER JOIN banco b ON b.account = c.account
-								WHERE c.date = '$fechaRecibida'
-									OR (b.id_bank = '$bank' 
-									AND b.account = '$account')";
-				
-				
-				/*$sqlBusqueda = "SELECT * FROM conciliation_donbodegon 
-								WHERE date = STR_TO_DATE('$fechaRecibida', '%Y%m%d')
-								OR (bank = '$bank' 
-								AND account = '$account')";*/
-				$registros = $this->select_all($sqlBusqueda);
-				
-				$mejorCoincidencia = null;
-				$maxCoincidencias = 0;
-				
-				
-				
-				foreach ($registros as $reg) {
-					
-					$coincidencias = 0;
-					$montoBD = abs(floatval($reg['amount']));
-					$diffMonto = abs($montoRecibido - $montoBD);
-					
-					
-					$coincideMonto = ($reglaMonto === null) ? ($montoRecibido == $montoBD) : ($diffMonto <= $reglaMonto);
-					if ($coincideMonto) $coincidencias++;
-					
-					// Verificar referencia
-					$refBD = $reg['reference'];
-					$coincideReferencia = false;
-						
-					if ($reglaReferencia === null) {
-						$coincideReferencia = ($refRecibida == $refBD);
-					} else {
-						$ultimosRecibida = substr($refRecibida, -$reglaReferencia);
-						$ultimosBD = substr($refBD, -$reglaReferencia);
-						$coincideReferencia = ($ultimosRecibida == $ultimosBD);
-					}
-					
-					if ($coincideReferencia) $coincidencias++;
-					
-					if($reg['date'] == $fechaRecibida) $coincidencias++;
-					
-					// Verificar fecha (ya está en la condición del SELECT)
-					if ($coincidencias > $maxCoincidencias) {
-						$maxCoincidencias = $coincidencias;
-						$mejorCoincidencia = $reg;
-					}
-				}
-				
-				// Actualizar la fila si hubo coincidencias
-				if ($mejorCoincidencia) {
-					
-					$id = $mejorCoincidencia['id'];
-					
-					if ($maxCoincidencias == 3) {
-						$totalCompleto++;
-						$status_id = 2; // auto_reconciled
-					} elseif ($maxCoincidencias == 2) {				
-						$totalParcial++;
-						$status_id = 3; // partial_match
-					} else {
-						$status_id = 1; // no_match
-					}
-					
-					$sqlUpdate = "UPDATE $table
-								  SET status_id = ?
-								  WHERE id = '$id' AND status_id = 1";
-					$valueArray = array($status_id);
-					$this->update($sqlUpdate, $valueArray);
-				}else{
-					$totalSinCoincidencia++;
-				}
-			}
-			
-			return [
-				'status' => true,
-				'completos' => $totalCompleto,
-				'parciales' => $totalParcial,
-				'sin_coincidencia' => $totalSinCoincidencia
-			];
-		}
 
 		// ============================================
 		// FUNCIONES DE GESTIÓN DE TRANSACCIONES
@@ -759,33 +620,6 @@
 		return $this->select_all($sql);
 	}
 
-
-
-
-
-
-
-	private function formatearFechaParaComparacion($fechaBD) {
-		// Intentar múltiples formatos de fecha
-		$formatos = ['Y-m-d', 'Y-m-d H:i:s', 'd/m/Y', 'm/d/Y'];
-		
-		foreach ($formatos as $formato) {
-			$fecha = DateTime::createFromFormat($formato, $fechaBD);
-			if ($fecha !== false) {
-				return $fecha->format('Ymd');
-			}
-		}
-		
-		// Si es timestamp
-		if (is_numeric($fechaBD)) {
-			return date('Ymd', $fechaBD);
-		}
-		
-		return null;
-	}
-
-
-
 		// ============================================
 		// FUNCIONES PRIVADAS DE CONCILIACIÓN
 		// ============================================
@@ -884,8 +718,6 @@
 		// PASO 4: DETERMINAR ESTATUS FINAL
 		// ==========================================
 		
-		// Registrar evaluación en log para auditoría
-		$this->registrarEvaluacionCandidatos($refRecibida, $montoRecibido, $fechaRecibida, $candidatosEvaluados, $mejorCandidato);
 		
 		// Solo considerar válida si tiene puntuación mínima (al menos 2 coincidencias)
 		if ($mejorPuntuacion >= 150) { // Mínimo: 2 coincidencias parciales (50+75=125) + margen
@@ -1009,43 +841,6 @@
 		return $puntuacion;
 	}
 
-	/**
-	 * REGISTRAR EVALUACIÓN DE CANDIDATOS EN LOG
-	 * 
-	 * Guarda en log la evaluación completa de candidatos para auditoría y debugging.
-	 * Permite rastrear por qué se seleccionó un candidato específico.
-	 * 
-	 * @param string $refRecibida Referencia del movimiento recibido
-	 * @param float $montoRecibido Monto del movimiento recibido
-	 * @param string $fechaRecibida Fecha del movimiento recibido
-	 * @param array $candidatosEvaluados Lista de candidatos con sus puntuaciones
-	 * @param array|null $mejorCandidato Candidato seleccionado como mejor coincidencia
-	 * @return void
-	 */
-	private function registrarEvaluacionCandidatos($refRecibida, $montoRecibido, $fechaRecibida, $candidatosEvaluados, $mejorCandidato) {
-		$logFile = 'evaluacion_candidatos.log';
-		$fechaActual = date('Y-m-d H:i:s');
-		
-		$logData = [
-			'timestamp' => $fechaActual,
-			'movimiento_recibido' => [
-				'referencia' => $refRecibida,
-				'monto' => $montoRecibido,
-				'fecha' => $fechaRecibida
-			],
-			'candidatos_evaluados' => $candidatosEvaluados,
-			'mejor_candidato' => $mejorCandidato ? [
-				'id' => $mejorCandidato['id'],
-				'referencia' => $mejorCandidato['reference'],
-				'monto' => $mejorCandidato['amount'],
-				'fecha' => $mejorCandidato['date']
-			] : null,
-			'total_candidatos' => count($candidatosEvaluados)
-		];
-		
-		$logEntry = "$fechaActual - EVALUACION_CANDIDATOS - " . json_encode($logData, JSON_UNESCAPED_UNICODE) . "\n";
-		file_put_contents($logFile, $logEntry, FILE_APPEND);
-	}
 	
 	/**
 	 * EVALUAR COINCIDENCIA DE REFERENCIA
@@ -1175,15 +970,5 @@
 		return $fechaRecibida;
 	}
 
-		// ============================================
-		// FUNCIONES DE LOGGING Y UTILIDADES
-		// ============================================
-
-	private function registrarLogMovimientos($movimientos, $tipo) {
-		$logFile = 'movimientos.log';
-		$fechaActual = date('Y-m-d H:i:s');
-		$logEntry = "$fechaActual - $tipo - " . json_encode($movimientos) . "\n";
-		file_put_contents($logFile, $logEntry, FILE_APPEND);
-	}
 }
 ?>
