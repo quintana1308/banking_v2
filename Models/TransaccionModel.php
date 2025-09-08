@@ -791,16 +791,24 @@
 		// ============================================
 
 	/**
-	 * EVALUAR CONCILIACIÓN DE UN MOVIMIENTO
+	 * EVALUAR CONCILIACIÓN DE UN MOVIMIENTO - VERSIÓN MEJORADA
 	 * 
-	 * Busca registros similares en la base de datos y determina el estatus
-	 * basado en los valores autocon y coincidence del sistema externo.
+	 * Busca el mejor registro coincidente usando un sistema de puntuación inteligente
+	 * que maneja correctamente movimientos duplicados y diferentes tipos de coincidencias.
 	 * 
-	 * FLUJO DEL PROCESO:
-	 * 1. Obtiene reglas de conciliación del banco
-	 * 2. Busca registros candidatos en la BD
-	 * 3. Evalúa coincidencias (referencia, monto, fecha)
-	 * 4. Determina estatus según autocon/coincidence
+	 * MEJORAS IMPLEMENTADAS:
+	 * 1. Sistema de puntuación para determinar la mejor coincidencia
+	 * 2. Manejo correcto de movimientos duplicados
+	 * 3. Evaluación de TODOS los candidatos, no solo el primero
+	 * 4. Priorización inteligente basada en calidad de coincidencia
+	 * 
+	 * SISTEMA DE PUNTUACIÓN:
+	 * - Referencia exacta: 100 puntos
+	 * - Referencia parcial (últimos N dígitos): 50 puntos  
+	 * - Monto exacto: 100 puntos
+	 * - Monto con diferencial permitido: 75 puntos
+	 * - Fecha exacta: 100 puntos
+	 * - Bonus por coincidencia perfecta (3/3): +50 puntos
 	 * 
 	 * @param string $table Tabla de movimientos de la empresa
 	 * @param string $bank ID del banco
@@ -819,101 +827,224 @@
 		// PASO 1: OBTENER REGLAS DE CONCILIACIÓN
 		// ==========================================
 		
-		// Consultar reglas configuradas para este banco específico
 		$reglas = $this->obtenerReglasBanco($bank, $account, $rif, $token);
 		$diferencialBs = isset($reglas['monto']) ? floatval($reglas['monto']) : null;
 		$digitosReferencia = isset($reglas['referencia']) ? intval($reglas['referencia']) : null;
-		
-		// Formatear fecha para búsqueda en BD
 		$fechaFormateada = $this->formatearFechaParaBusqueda($fechaRecibida);
 		
 		// ==========================================
-		// PASO 2: BUSCAR REGISTROS CANDIDATOS
+		// PASO 2: OBTENER TODOS LOS CANDIDATOS
 		// ==========================================
 		
-		// Buscar registros pendientes (status_id = 1) de la misma cuenta
-		// PRIORIDAD 1: Buscar coincidencia PERFECTA (referencia + monto + fecha)
-		$sqlBusquedaPerfecta = "SELECT c.id, c.amount, c.reference, c.date, c.status_id, c.account
-						FROM $table c
-						WHERE c.status_id = 1
-						AND c.account = '$account'
-						AND c.reference = '$refRecibida'
-						AND ABS(c.amount) = $montoRecibido
-						AND c.date = '$fechaFormateada'
-						ORDER BY c.date DESC, c.id ASC
-						LIMIT 1";
+		// Buscar TODOS los registros pendientes de la cuenta para evaluación completa
+		$sqlCandidatos = "SELECT c.id, c.amount, c.reference, c.date, c.status_id, c.account
+						  FROM $table c
+						  WHERE c.status_id = 1
+						  AND c.account = '$account'
+						  ORDER BY c.date DESC, c.id ASC";
 		
-		// PRIORIDAD 2: Buscar coincidencia exacta (referencia + monto, fecha diferente)
-		$sqlBusquedaExacta = "SELECT c.id, c.amount, c.reference, c.date, c.status_id, c.account
-						FROM $table c
-						WHERE c.status_id = 1
-						AND c.account = '$account'
-						AND c.reference = '$refRecibida'
-						AND ABS(c.amount) = $montoRecibido
-						ORDER BY c.date DESC, c.id ASC
-						LIMIT 1";
+		$candidatos = $this->select_all($sqlCandidatos);
+		
+		if (empty($candidatos)) {
+			return ['registro' => null, 'status_id' => 1];
+		}
 		
 		// ==========================================
-		// PASO 3: EVALUAR COINCIDENCIAS POR PRIORIDAD
+		// PASO 3: EVALUAR Y PUNTUAR CADA CANDIDATO
 		// ==========================================
 		
-		$mejorCoincidencia = null;
-		$mejorStatus = 1; // Por defecto: no conciliado
+		$mejorCandidato = null;
+		$mejorPuntuacion = 0;
+		$candidatosEvaluados = [];
 		
-		// PRIORIDAD 1: Buscar coincidencia PERFECTA (3 de 3 criterios)
-		$registrosPerfectos = $this->select_all($sqlBusquedaPerfecta);
-		if (!empty($registrosPerfectos)) {
-			$mejorCoincidencia = $registrosPerfectos[0];
-			$mejorStatus = $this->determinarStatusPorAutoconCoincidence($autocon, $coincidence);
-		} else {
-			// PRIORIDAD 2: Buscar coincidencia EXACTA (referencia + monto, fecha diferente)
-			$registrosExactos = $this->select_all($sqlBusquedaExacta);
-			if (!empty($registrosExactos)) {
-				$mejorCoincidencia = $registrosExactos[0];
-				$mejorStatus = $this->determinarStatusPorAutoconCoincidence($autocon, $coincidence);
+		foreach ($candidatos as $candidato) {
+			$puntuacion = $this->calcularPuntuacionCoincidencia(
+				$refRecibida, $montoRecibido, $fechaRecibida,
+				$candidato['reference'], abs(floatval($candidato['amount'])), $candidato['date'],
+				$digitosReferencia, $diferencialBs
+			);
+			
+			// Registrar evaluación para debugging
+			$candidatosEvaluados[] = [
+				'id' => $candidato['id'],
+				'referencia' => $candidato['reference'],
+				'monto' => $candidato['amount'],
+				'fecha' => $candidato['date'],
+				'puntuacion' => $puntuacion['total']
+			];
+			
+			// Actualizar mejor candidato si esta puntuación es superior
+			if ($puntuacion['total'] > $mejorPuntuacion) {
+				$mejorPuntuacion = $puntuacion['total'];
+				$mejorCandidato = $candidato;
 			}
 		}
 		
-		
 		// ==========================================
-		// PRIORIDAD 3: SI NO HAY EXACTA, BUSCAR PARCIAL
+		// PASO 4: DETERMINAR ESTATUS FINAL
 		// ==========================================
 		
-		// Si no se encontró coincidencia exacta ni perfecta, buscar coincidencia parcial
-		if (!$mejorCoincidencia) {
-			// Buscar en todos los registros pendientes para coincidencias parciales
-			$sqlBusquedaParcial = "SELECT c.id, c.amount, c.reference, c.date, c.status_id, c.account
-								FROM $table c
-								WHERE c.status_id = 1
-								AND c.account = '$account'
-								ORDER BY c.date DESC, c.id ASC";
-			
-			$registrosParciales = $this->select_all($sqlBusquedaParcial);
-			
-			foreach ($registrosParciales as $reg) {
-				$coincideReferencia = $this->evaluarCoincidenciaReferencia($refRecibida, $reg['reference'], $digitosReferencia);
-				$coincideMonto = $this->evaluarCoincidenciaMonto($montoRecibido, abs(floatval($reg['amount'])), $diferencialBs);
-				$coincideFecha = $this->evaluarCoincidenciaFecha($fechaRecibida, $reg['date']);
-				
-				// Contar coincidencias encontradas
-				$coincidenciasEncontradas = 0;
-				if ($coincideReferencia) $coincidenciasEncontradas++;
-				if ($coincideMonto) $coincidenciasEncontradas++;
-				if ($coincideFecha) $coincidenciasEncontradas++;
-				
-				// Requiere al menos 2 de 3 coincidencias para ser válido
-				if ($coincidenciasEncontradas >= 2) {
-					$mejorCoincidencia = $reg;
-					$mejorStatus = $this->determinarStatusPorAutoconCoincidence($autocon, $coincidence);
-					break; // Tomar la primera coincidencia parcial válida
-				}
-			}
+		// Registrar evaluación en log para auditoría
+		$this->registrarEvaluacionCandidatos($refRecibida, $montoRecibido, $fechaRecibida, $candidatosEvaluados, $mejorCandidato);
+		
+		// Solo considerar válida si tiene puntuación mínima (al menos 2 coincidencias)
+		if ($mejorPuntuacion >= 150) { // Mínimo: 2 coincidencias parciales (50+75=125) + margen
+			$statusFinal = $this->determinarStatusPorAutoconCoincidence($autocon, $coincidence);
+			return [
+				'registro' => $mejorCandidato,
+				'status_id' => $statusFinal
+			];
 		}
 		
+		// No hay coincidencia suficiente
 		return [
-			'registro' => $mejorCoincidencia,
-			'status_id' => $mejorStatus
+			'registro' => null,
+			'status_id' => 1
 		];
+	}
+
+	/**
+	 * CALCULAR PUNTUACIÓN DE COINCIDENCIA ENTRE MOVIMIENTOS
+	 * 
+	 * Sistema de puntuación inteligente que evalúa la calidad de coincidencia
+	 * entre un movimiento recibido y un candidato de la base de datos.
+	 * 
+	 * SISTEMA DE PUNTUACIÓN:
+	 * ┌─────────────────────┬─────────────┬─────────────────────────────────┐
+	 * │ Criterio            │ Puntuación  │ Descripción                     │
+	 * ├─────────────────────┼─────────────┼─────────────────────────────────┤
+	 * │ Referencia exacta   │    100      │ Referencias idénticas           │
+	 * │ Referencia parcial  │     50      │ Últimos N dígitos coinciden     │
+	 * │ Monto exacto        │    100      │ Montos idénticos                │
+	 * │ Monto diferencial   │     75      │ Diferencia dentro del rango     │
+	 * │ Fecha exacta        │    100      │ Fechas idénticas                │
+	 * │ Bonus perfecto      │     50      │ Los 3 criterios coinciden       │
+	 * └─────────────────────┴─────────────┴─────────────────────────────────┘
+	 * 
+	 * @param string $refRecibida Referencia del movimiento recibido
+	 * @param float $montoRecibido Monto del movimiento recibido
+	 * @param string $fechaRecibida Fecha del movimiento recibido (YYYYMMDD)
+	 * @param string $refCandidato Referencia del candidato en BD
+	 * @param float $montoCandidato Monto del candidato en BD
+	 * @param string $fechaCandidato Fecha del candidato en BD
+	 * @param int|null $digitosReferencia Regla de dígitos para referencia
+	 * @param float|null $diferencialBs Regla de diferencial para monto
+	 * @return array ['referencia' => int, 'monto' => int, 'fecha' => int, 'total' => int, 'detalles' => array]
+	 */
+	private function calcularPuntuacionCoincidencia($refRecibida, $montoRecibido, $fechaRecibida, $refCandidato, $montoCandidato, $fechaCandidato, $digitosReferencia, $diferencialBs) {
+		$puntuacion = [
+			'referencia' => 0,
+			'monto' => 0, 
+			'fecha' => 0,
+			'total' => 0,
+			'detalles' => []
+		];
+		
+		// ==========================================
+		// EVALUAR COINCIDENCIA DE REFERENCIA
+		// ==========================================
+		
+		if ($refRecibida == $refCandidato) {
+			// Coincidencia exacta completa
+			$puntuacion['referencia'] = 100;
+			$puntuacion['detalles']['referencia'] = 'Exacta completa';
+		} elseif ($digitosReferencia !== null && $digitosReferencia > 0) {
+			// Evaluar coincidencia parcial según reglas
+			$ultimosRecibida = substr($refRecibida, -$digitosReferencia);
+			$ultimosCandidato = substr($refCandidato, -$digitosReferencia);
+			
+			if ($ultimosRecibida == $ultimosCandidato) {
+				$puntuacion['referencia'] = 50;
+				$puntuacion['detalles']['referencia'] = "Parcial (últimos $digitosReferencia dígitos)";
+			} else {
+				$puntuacion['detalles']['referencia'] = 'No coincide';
+			}
+		} else {
+			$puntuacion['detalles']['referencia'] = 'No coincide (sin reglas parciales)';
+		}
+		
+		// ==========================================
+		// EVALUAR COINCIDENCIA DE MONTO
+		// ==========================================
+		
+		$diferenciaMonto = abs($montoRecibido - $montoCandidato);
+		
+		if ($diferenciaMonto == 0) {
+			// Monto exacto
+			$puntuacion['monto'] = 100;
+			$puntuacion['detalles']['monto'] = 'Exacto';
+		} elseif ($diferencialBs !== null && $diferencialBs > 0 && $diferenciaMonto <= $diferencialBs) {
+			// Monto dentro del diferencial permitido
+			$puntuacion['monto'] = 75;
+			$puntuacion['detalles']['monto'] = "Diferencial permitido (±$diferencialBs Bs, diff: $diferenciaMonto)";
+		} else {
+			$puntuacion['detalles']['monto'] = "Diferencia: $diferenciaMonto Bs";
+		}
+		
+		// ==========================================
+		// EVALUAR COINCIDENCIA DE FECHA
+		// ==========================================
+		
+		$fechaFormateada = $this->formatearFechaParaBusqueda($fechaRecibida);
+		
+		if ($fechaFormateada == $fechaCandidato) {
+			$puntuacion['fecha'] = 100;
+			$puntuacion['detalles']['fecha'] = 'Exacta';
+		} else {
+			$puntuacion['detalles']['fecha'] = "No coincide ($fechaFormateada vs $fechaCandidato)";
+		}
+		
+		// ==========================================
+		// CALCULAR PUNTUACIÓN TOTAL Y BONUS
+		// ==========================================
+		
+		$puntuacion['total'] = $puntuacion['referencia'] + $puntuacion['monto'] + $puntuacion['fecha'];
+		
+		// Bonus por coincidencia perfecta (los 3 criterios con puntuación máxima)
+		if ($puntuacion['referencia'] == 100 && $puntuacion['monto'] == 100 && $puntuacion['fecha'] == 100) {
+			$puntuacion['total'] += 50;
+			$puntuacion['detalles']['bonus'] = 'Coincidencia perfecta (+50)';
+		}
+		
+		return $puntuacion;
+	}
+
+	/**
+	 * REGISTRAR EVALUACIÓN DE CANDIDATOS EN LOG
+	 * 
+	 * Guarda en log la evaluación completa de candidatos para auditoría y debugging.
+	 * Permite rastrear por qué se seleccionó un candidato específico.
+	 * 
+	 * @param string $refRecibida Referencia del movimiento recibido
+	 * @param float $montoRecibido Monto del movimiento recibido
+	 * @param string $fechaRecibida Fecha del movimiento recibido
+	 * @param array $candidatosEvaluados Lista de candidatos con sus puntuaciones
+	 * @param array|null $mejorCandidato Candidato seleccionado como mejor coincidencia
+	 * @return void
+	 */
+	private function registrarEvaluacionCandidatos($refRecibida, $montoRecibido, $fechaRecibida, $candidatosEvaluados, $mejorCandidato) {
+		$logFile = 'evaluacion_candidatos.log';
+		$fechaActual = date('Y-m-d H:i:s');
+		
+		$logData = [
+			'timestamp' => $fechaActual,
+			'movimiento_recibido' => [
+				'referencia' => $refRecibida,
+				'monto' => $montoRecibido,
+				'fecha' => $fechaRecibida
+			],
+			'candidatos_evaluados' => $candidatosEvaluados,
+			'mejor_candidato' => $mejorCandidato ? [
+				'id' => $mejorCandidato['id'],
+				'referencia' => $mejorCandidato['reference'],
+				'monto' => $mejorCandidato['amount'],
+				'fecha' => $mejorCandidato['date']
+			] : null,
+			'total_candidatos' => count($candidatosEvaluados)
+		];
+		
+		$logEntry = "$fechaActual - EVALUACION_CANDIDATOS - " . json_encode($logData, JSON_UNESCAPED_UNICODE) . "\n";
+		file_put_contents($logFile, $logEntry, FILE_APPEND);
 	}
 	
 	/**
