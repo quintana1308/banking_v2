@@ -848,7 +848,7 @@
 			$coincideMonto = $this->evaluarCoincidenciaMonto($montoRecibido, abs(floatval($reg['amount'])), $diferencialBs);
 			$coincideFecha = $this->evaluarCoincidenciaFecha($fechaRecibida, $reg['date']);
 			
-			if($refRecibida == '10880976'){
+			if($reg['reference'] == '00010880976'){
 				$logFile = 'coincidencias_referencia.log';
     			$fechaActual = date('Y-m-d H:i:s');
     			$logEntry = "$fechaActual - " . json_encode($coincideReferencia) . "\n";
