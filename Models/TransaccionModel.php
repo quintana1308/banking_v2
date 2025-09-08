@@ -851,11 +851,14 @@
 		// Evaluar cada registro candidato
 		foreach ($registros as $reg) {
 			// Evaluar coincidencias individuales
-			$coincideReferencia = $this->evaluarCoincidenciaReferencia($refRecibida, $reg['reference'], $digitosReferencia);
-			$coincideMonto = $this->evaluarCoincidenciaMonto($montoRecibido, abs(floatval($reg['amount'])), $diferencialBs);
-			$coincideFecha = $this->evaluarCoincidenciaFecha($fechaRecibida, $reg['date']);
+			
 			
 			if($reg['reference'] == '00010880976'){
+
+				$coincideReferencia = $this->evaluarCoincidenciaReferencia($refRecibida, $reg['reference'], $digitosReferencia);
+				$coincideMonto = $this->evaluarCoincidenciaMonto($montoRecibido, abs(floatval($reg['amount'])), $diferencialBs);
+				$coincideFecha = $this->evaluarCoincidenciaFecha($fechaRecibida, $reg['date']);
+				
 				$logFile = 'coincidencias_referencia.log';
     			$fechaActual = date('Y-m-d H:i:s');
     			$logEntry = "$fechaActual - ref:" . $reg['reference'] . " - " . json_encode($coincideReferencia) . "\n";
@@ -969,6 +972,10 @@
 	 */
 	private function evaluarCoincidenciaFecha($fechaRecibida, $fechaBD) {
 		// Normalizar ambas fechas para comparación
+		$logFile = 'evaluacion_fecha.log';
+    	$fechaActual = date('Y-m-d H:i:s');
+    	$logEntry = "$fechaActual - fecha_Recibida:" . $fechaRecibida . " - fechaBD:" . $fechaBD . "\n";
+    	file_put_contents($logFile, $logEntry, FILE_APPEND);
 		$fechaFormateada = $this->formatearFechaParaBusqueda($fechaRecibida);
 		$fechaBDFormateada = $this->formatearFechaParaComparacion($fechaBD);
 		return $fechaFormateada == $fechaBDFormateada;
