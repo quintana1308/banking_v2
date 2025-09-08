@@ -851,17 +851,17 @@
 			if($reg['reference'] == '00010880976'){
 				$logFile = 'coincidencias_referencia.log';
     			$fechaActual = date('Y-m-d H:i:s');
-    			$logEntry = "$fechaActual - " . json_encode($coincideReferencia) . "\n";
+    			$logEntry = "$fechaActual - ref:" . $reg['reference'] . " - " . json_encode($coincideReferencia) . "\n";
     			file_put_contents($logFile, $logEntry, FILE_APPEND);
 
 				$logFile = 'coincidencias_monto.log';
     			$fechaActual = date('Y-m-d H:i:s');
-    			$logEntry = "$fechaActual - " . json_encode($coincideMonto) . "\n";
+    			$logEntry = "$fechaActual - monto:" . $reg['amount'] . " - " . json_encode($coincideMonto) . "\n";
     			file_put_contents($logFile, $logEntry, FILE_APPEND);
 
 				$logFile = 'coincidencias_fecha.log';
     			$fechaActual = date('Y-m-d H:i:s');
-    			$logEntry = "$fechaActual - " . json_encode($coincideFecha) . "\n";
+    			$logEntry = "$fechaActual - fecha:" . $reg['date'] . " - " . json_encode($coincideFecha) . "\n";
     			file_put_contents($logFile, $logEntry, FILE_APPEND);
 			}
 			
