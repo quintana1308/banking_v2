@@ -856,8 +856,6 @@
 			
 			/*if($reg['reference'] == '00010880976'){
 
-
-				
 				$logFile = 'coincidencias_referencia.log';
     			$fechaActual = date('Y-m-d H:i:s');
     			$logEntry = "$fechaActual - ref:" . $reg['reference'] . " - " . json_encode($coincideReferencia) . "\n";
