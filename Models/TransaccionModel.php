@@ -10,6 +10,10 @@
 		{
 			parent::__construct();	
 		}
+
+		// ============================================
+		// FUNCIONES PRINCIPALES DE TRANSACCIONES
+		// ============================================
 		
 		//OBTENER LISTADO DE MOVIMIENTOS
 		public function getTransaction($filters = [])
@@ -123,255 +127,316 @@
 
 		}
 
-		//REALIZAR AUTOCONSOLIDACION Y PINTAR MOVIMIENTOS - VERSIÓN CORREGIDA CON REGLAS DE CONCILIACIÓN
+	/**
+	 * FUNCIÓN PRINCIPAL DE CONCILIACIÓN AUTOMÁTICA
+	 * 
+	 * Procesa un array de movimientos bancarios del sistema externo (DATA A)
+	 * y los concilia con los registros de la base de datos local (DATA B)
+	 * 
+	 * @param array $movimientos Array de movimientos con estructura:
+	 *   - rif: RIF de la empresa
+	 *   - token: Token de autenticación
+	 *   - bank: ID del banco
+	 *   - account: Número de cuenta
+	 *   - reference: Referencia del movimiento
+	 *   - date: Fecha en formato YYYYMMDD
+	 *   - amount: Monto del movimiento
+	 *   - autocon: Indicador de conciliación automática (0 o 1)
+	 *   - coincidence: Indicador de coincidencia parcial (0 o 1)
+	 * 
+	 * @return array Resultado con contadores de conciliación
+	 */
 	public function getTransactionConciliation($movimientos)
 	{	
-
+		// ==========================================
+		// PASO 1: LOGGING Y VALIDACIÓN INICIAL
+		// ==========================================
+		
+		// Registrar movimientos recibidos en log para auditoría
 		$logFile = 'movimientos.log';
     	$fechaActual = date('Y-m-d H:i:s');
-    	$logEntry = "$fechaActual - " . json_encode($movimientos) . "\n";
+    	$logEntry = "$fechaActual - MOVIMIENTOS_RECIBIDOS - " . json_encode($movimientos) . "\n";
     	file_put_contents($logFile, $logEntry, FILE_APPEND);
 
-		// Validación de entrada
+		// Validar que se recibieron movimientos válidos
 		if (empty($movimientos) || !is_array($movimientos)) {
 			return ['completos' => 0, 'parciales' => 0, 'sin_coincidencia' => 0];
 		}
 
-		// Resetear registros consolidados en el rango de fechas antes de procesar
+		// ==========================================
+		// PASO 2: PREPARACIÓN DEL PROCESO
+		// ==========================================
+		
+		// Resetear todos los registros consolidados en las fechas de los movimientos
+		// Esto permite reprocesar conciliaciones en caso de reenvío de datos
 		$this->resetearRegistrosConsolidados($movimientos);
 
-		$totalCompleto = 0;
-		$totalParcial = 0;
-		$totalSinCoincidencia = 0;
+		// Inicializar contadores de resultados
+		$totalCompleto = 0;        // Estatus 2: Conciliación completa
+		$totalParcial = 0;         // Estatus 3: Conciliación parcial
+		$totalSinCoincidencia = 0; // Estatus 1: Sin conciliación
 
-		// Procesar movimientos usando lógica de conciliación correcta
+		// ==========================================
+		// PASO 3: PROCESAMIENTO DE CADA MOVIMIENTO
+		// ==========================================
+		
 		foreach ($movimientos as $mov) {
-			// Validar datos del movimiento
+			// PASO 3.1: Validar estructura del movimiento
 			if (!$this->validarMovimiento($mov)) {
 				$totalSinCoincidencia++;
-				continue;
+				continue; // Saltar movimiento inválido
 			}
 
-			$rif = $mov['rif'];
-			$token = $mov['token'];
-			$bank = $mov['bank'];
-			$account = $mov['account'];
-			$refRecibida = $mov['reference'];
-			$fechaRecibida = $mov['date'];
-			$montoRecibido = abs(floatval($mov['amount']));
+			// PASO 3.2: Extraer datos del movimiento
+			$rif = $mov['rif'];                           // RIF de la empresa
+			$token = $mov['token'];                       // Token de autenticación
+			$bank = $mov['bank'];                         // ID del banco
+			$account = $mov['account'];                   // Número de cuenta
+			$refRecibida = $mov['reference'];             // Referencia del movimiento
+			$fechaRecibida = $mov['date'];                // Fecha (YYYYMMDD)
+			$montoRecibido = abs(floatval($mov['amount'])); // Monto (siempre positivo)
 			
-			// Obtener tabla empresa
+			// PASO 3.3: Obtener tabla de la empresa
 			$table = $this->obtenerTablaEmpresa($rif, $token);
 			
 			if (!$table) {
 				$totalSinCoincidencia++;
-				continue;
+				continue; // Empresa no encontrada
 			}
 			
-			// Buscar registro y evaluar coincidencias
-			$resultadoConciliacion = $this->evaluarConciliacion($table, $bank, $account, $fechaRecibida, $montoRecibido, $refRecibida, $rif, $token);
+			// PASO 3.4: Extraer indicadores de conciliación del sistema externo
+			// Estos valores determinan el estatus final:
+			// autocon=1, coincidence=0 → Estatus 2 (Conciliado)
+			// autocon=0, coincidence=1 → Estatus 3 (Parcial)
+			// autocon=0, coincidence=0 → Estatus 1 (No conciliado)
+			$autocon = isset($mov['autocon']) ? intval($mov['autocon']) : 0;
+			$coincidence = isset($mov['coincidence']) ? intval($mov['coincidence']) : 0;
 			
+			// PASO 3.5: Buscar registro similar en la base de datos
+			$resultadoConciliacion = $this->evaluarConciliacion(
+				$table, $bank, $account, $fechaRecibida, 
+				$montoRecibido, $refRecibida, $rif, $token, 
+				$autocon, $coincidence
+			);
+			
+			// PASO 3.6: Procesar resultado de la conciliación
 			if ($resultadoConciliacion['registro']) {
+				// Se encontró un registro similar
 				$status_id = $resultadoConciliacion['status_id'];
 				
-				// Contar según el estatus asignado
+				// Incrementar contadores según el estatus asignado
 				if ($status_id == 2) {
-					$totalCompleto++;
+					$totalCompleto++;        // Conciliación completa
 				} elseif ($status_id == 3) {
-					$totalParcial++;
+					$totalParcial++;         // Conciliación parcial
 				} else {
-					$totalSinCoincidencia++;
+					$totalSinCoincidencia++; // Sin conciliación
 				}
 				
-				// Actualizar registro
+				// Actualizar el estatus en la base de datos
 				$this->actualizarStatusRegistro($table, $resultadoConciliacion['registro']['id'], $status_id);
 			} else {
+				// No se encontró registro similar
 				$totalSinCoincidencia++;
 			}
 		}
 
+		// ==========================================
+		// PASO 4: PREPARAR Y RETORNAR RESULTADO
+		// ==========================================
+		
 		$resultadoFinal = [
-			'completos' => $totalCompleto,
-			'parciales' => $totalParcial,
-			'sin_coincidencia' => $totalSinCoincidencia
+			'completos' => $totalCompleto,           // Total de conciliaciones completas
+			'parciales' => $totalParcial,            // Total de conciliaciones parciales
+			'sin_coincidencia' => $totalSinCoincidencia // Total sin conciliar
 		];
 
-		// Registrar resultado del procesamiento en log
-		$this->registrarLogMovimientos($resultadoFinal, 'RESULTADO');
+		// Registrar resultado final en log
+		$this->registrarLogMovimientos($resultadoFinal, 'RESULTADO_FINAL');
 
 		return $resultadoFinal;
 	}
 
-		// MÉTODOS AUXILIARES PARA LA CONCILIACIÓN OPTIMIZADA
-		private function validarMovimiento($mov) {
-			$camposRequeridos = ['bank', 'account', 'rif', 'token', 'reference', 'date', 'amount'];
-			
-			foreach ($camposRequeridos as $campo) {
-				if (!isset($mov[$campo]) || empty($mov[$campo])) {
-					return false;
-				}
-			}
-			
-			// Validar formato de fecha
-			if (!preg_match('/^\d{8}$/', $mov['date'])) {
-				return false;
-			}
-			
-			// Validar que amount sea numérico
-			if (!is_numeric($mov['amount'])) {
-				return false;
-			}
-			
-			return true;
-		}
-
-		private function obtenerReglasBanco($bank, $account, $rif, $token) {
-			$sqlReglas = "SELECT concibanc_monto AS monto, concibanc_reference AS reference 
-						  FROM banco b
-						  INNER JOIN empresa e ON e.id = b.id_enterprise
-						  WHERE b.id_bank = '$bank' 	
-						  AND b.account = '$account' 
-						  AND e.rif = '$rif'
-						  AND e.token = '$token'";
-
-			$reglas = $this->select($sqlReglas);
-			
-			return [
-				'monto' => isset($reglas['monto']) ? floatval($reglas['monto']) : null,
-				'referencia' => isset($reglas['reference']) ? intval($reglas['reference']) : null
-			];
-		}
-
-		private function obtenerTablaEmpresa($rif, $token) {
-			$sqlTable = "SELECT `table` FROM empresa WHERE rif = '$rif' AND token = '$token'";
-			$requestEnterprise = $this->select($sqlTable);
-			
-			return isset($requestEnterprise['table']) ? $requestEnterprise['table'] : null;
-		}
-
-		private function buscarRegistrosCandidatos($table, $bank, $account, $fechaRecibida) {
-			// Búsqueda optimizada: buscar por fecha y cuenta, filtrar solo registros pendientes
-			$sqlBusqueda = "SELECT c.id, c.amount, c.reference, c.date, c.status_id, c.account
-							FROM $table c
-							WHERE (c.date = STR_TO_DATE('$fechaRecibida', '%Y%m%d') 
-								   OR c.account = '$account')
-							AND c.status_id = 1
-							ORDER BY c.date DESC, c.id ASC";
-			
-			return $this->select_all($sqlBusqueda);
-		}
-
-		private function encontrarMejorCoincidencia($registros, $montoRecibido, $refRecibida, $fechaRecibida) {
-
-			$mejorCoincidencia = null;
-			$maxCoincidencias = 0;
-			
-			foreach ($registros as $reg) {
-				$coincidencias = 0;
-				
-				// Verificar monto (comparación exacta)
-				$montoBD = abs(floatval($reg['amount']));
-				if ($montoRecibido == $montoBD) {
-					$coincidencias++;
-				}
-				
-				// Verificar referencia (comparación exacta)
-				$refBD = $reg['reference'];
-				if ($refRecibida == $refBD) {
-					$coincidencias++;
-				}
-				
-				// Verificar fecha
-				$fechaformat = DateTime::createFromFormat('Y-m-d', $reg['date'])->format('Ymd');
-				if ($fechaformat == $fechaRecibida) {
-					$coincidencias++;
-				}
-				
-				// Actualizar mejor coincidencia
-				if ($coincidencias > $maxCoincidencias) {
-					$maxCoincidencias = $coincidencias;
-					$mejorCoincidencia = $reg;
-				}
-			}
-			
-			return [
-				'registro' => $mejorCoincidencia,
-				'coincidencias' => $maxCoincidencias
-			];
-		}
-
-		private function determinarStatus($coincidencias) {
-			if ($coincidencias == 3) {
-				return 2; // auto_reconciled
-			} elseif ($coincidencias == 2) {
-				return 3; // partial_match
-			} else {
-				return 4; // no_match
+	/**
+	 * VALIDAR ESTRUCTURA DE UN MOVIMIENTO
+	 * 
+	 * Verifica que el movimiento tenga todos los campos requeridos
+	 * y que los datos estén en el formato correcto
+	 * 
+	 * @param array $mov Movimiento a validar
+	 * @return bool True si es válido, False si no
+	 */
+	private function validarMovimiento($mov) {
+		// Campos obligatorios que debe tener cada movimiento
+		$camposRequeridos = ['bank', 'account', 'rif', 'token', 'reference', 'date', 'amount'];
+		
+		// Verificar que todos los campos estén presentes y no vacíos
+		foreach ($camposRequeridos as $campo) {
+			if (!isset($mov[$campo]) || empty($mov[$campo])) {
+				return false; // Campo faltante o vacío
 			}
 		}
-
-		private function actualizarStatusRegistro($table, $id, $status_id) {
-			$sqlUpdate = "UPDATE $table SET status_id = ? WHERE id = '$id'";
-			$valueArray = [$status_id];
-			return $this->update($sqlUpdate, $valueArray);
+		
+		// Validar formato de fecha (debe ser YYYYMMDD - 8 dígitos)
+		if (!preg_match('/^\d{8}$/', $mov['date'])) {
+			return false; // Formato de fecha inválido
 		}
+		
+		// Validar que el monto sea numérico
+		if (!is_numeric($mov['amount'])) {
+			return false; // Monto no numérico
+		}
+		
+		return true; // Movimiento válido
+	}
 
-		// RESETEAR REGISTROS CONSOLIDADOS EN RANGO DE FECHAS
-		private function resetearRegistrosConsolidados($movimientos) {
-			// Obtener fechas únicas y empresas de los movimientos
-			$fechasEmpresas = [];
-			
-			foreach ($movimientos as $mov) {
-				if (!$this->validarMovimiento($mov)) {
-					continue;
-				}
-				
-				$rif = $mov['rif'];
-				$token = $mov['token'];
-				$fecha = $mov['date'];
-				
-				$claveEmpresa = "{$rif}_{$token}";
-				
-				if (!isset($fechasEmpresas[$claveEmpresa])) {
-					$fechasEmpresas[$claveEmpresa] = [
-						'rif' => $rif,
-						'token' => $token,
-						'fechas' => []
-					];
-				}
-				
-				if (!in_array($fecha, $fechasEmpresas[$claveEmpresa]['fechas'])) {
-					$fechasEmpresas[$claveEmpresa]['fechas'][] = $fecha;
-				}
+	/**
+	 * OBTENER REGLAS DE CONCILIACIÓN DEL BANCO
+	 * 
+	 * Consulta las reglas configuradas para un banco específico:
+	 * - concibanc_monto: Diferencial permitido en el monto (ej: 100 = ±100 Bs)
+	 * - concibanc_reference: Número de dígitos a comparar en la referencia (ej: 4 = últimos 4 dígitos)
+	 * 
+	 * @param string $bank ID del banco
+	 * @param string $account Número de cuenta
+	 * @param string $rif RIF de la empresa
+	 * @param string $token Token de autenticación
+	 * @return array Reglas de conciliación ['monto' => float|null, 'referencia' => int|null]
+	 */
+	private function obtenerReglasBanco($bank, $account, $rif, $token) {
+		// Consultar reglas de conciliación configuradas para este banco
+		$sqlReglas = "SELECT concibanc_monto AS monto, concibanc_reference AS reference 
+					  FROM banco b
+					  INNER JOIN empresa e ON e.id = b.id_enterprise
+					  WHERE b.id_bank = '$bank' 	
+					  AND b.account = '$account' 
+					  AND e.rif = '$rif'
+					  AND e.token = '$token'";
+
+		$reglas = $this->select($sqlReglas);
+		
+		return [
+			'monto' => isset($reglas['monto']) ? floatval($reglas['monto']) : null,
+			'referencia' => isset($reglas['reference']) ? intval($reglas['reference']) : null
+		];
+	}
+
+	/**
+	 * OBTENER NOMBRE DE LA TABLA DE MOVIMIENTOS DE UNA EMPRESA
+	 * 
+	 * Cada empresa tiene su propia tabla de movimientos bancarios.
+	 * Esta función obtiene el nombre de esa tabla usando RIF y token.
+	 * 
+	 * @param string $rif RIF de la empresa
+	 * @param string $token Token de autenticación
+	 * @return string|null Nombre de la tabla o null si no se encuentra
+	 */
+	private function obtenerTablaEmpresa($rif, $token) {
+		// Buscar la tabla asociada a la empresa
+		$sqlTable = "SELECT `table` FROM empresa WHERE rif = '$rif' AND token = '$token'";
+		$requestEnterprise = $this->select($sqlTable);
+		
+		return isset($requestEnterprise['table']) ? $requestEnterprise['table'] : null;
+	}
+
+
+
+
+	/**
+	 * ACTUALIZAR ESTATUS DE UN REGISTRO EN LA BASE DE DATOS
+	 * 
+	 * Cambia el status_id de un movimiento específico:
+	 * - 1: No conciliado
+	 * - 2: Conciliado (completo)
+	 * - 3: Conciliación parcial
+	 * - 4: Asignado manualmente
+	 * 
+	 * @param string $table Nombre de la tabla
+	 * @param int $id ID del registro
+	 * @param int $status_id Nuevo estatus (1-4)
+	 * @return bool Resultado de la actualización
+	 */
+	private function actualizarStatusRegistro($table, $id, $status_id) {
+		$sqlUpdate = "UPDATE $table SET status_id = ? WHERE id = '$id'";
+		$valueArray = [$status_id];
+		return $this->update($sqlUpdate, $valueArray);
+	}
+
+	/**
+	 * RESETEAR REGISTROS CONSOLIDADOS EN RANGO DE FECHAS
+	 * 
+	 * Antes de procesar nuevos movimientos, resetea todos los registros
+	 * que ya estaban conciliados en las fechas de los movimientos recibidos.
+	 * Esto permite reprocesar conciliaciones si se reenvían datos.
+	 * 
+	 * @param array $movimientos Array de movimientos a procesar
+	 * @return void
+	 */
+	private function resetearRegistrosConsolidados($movimientos) {
+		// Agrupar fechas por empresa para optimizar consultas
+		$fechasEmpresas = [];
+		
+		// PASO 1: Extraer fechas únicas por empresa
+		foreach ($movimientos as $mov) {
+			if (!$this->validarMovimiento($mov)) {
+				continue; // Saltar movimientos inválidos
 			}
 			
-			// Resetear registros por empresa y fechas
-			foreach ($fechasEmpresas as $empresa) {
-				$table = $this->obtenerTablaEmpresa($empresa['rif'], $empresa['token']);
-				
-				if (!$table) {
-					continue;
-				}
-				
-				// Crear condición WHERE para las fechas
-				$condicionesFecha = [];
-				foreach ($empresa['fechas'] as $fecha) {
-					$condicionesFecha[] = "c.date = STR_TO_DATE('$fecha', '%Y%m%d')";
-				}
-				
-				if (!empty($condicionesFecha)) {
-					$whereFechas = implode(' OR ', $condicionesFecha);
-					
-					// Resetear registros consolidados (status 2, 3, 4) a pending (status 1)
-					$sqlReset = "UPDATE $table c 
-								 SET c.status_id = 1 
-								 WHERE ($whereFechas) 
-								 AND c.status_id IN (2, 3, 4)";
-					
-					$this->update_massive($sqlReset);
-				}
+			$rif = $mov['rif'];
+			$token = $mov['token'];
+			$fecha = $mov['date'];
+			
+			// Crear clave única para la empresa
+			$claveEmpresa = "{$rif}_{$token}";
+			
+			// Inicializar array para nueva empresa
+			if (!isset($fechasEmpresas[$claveEmpresa])) {
+				$fechasEmpresas[$claveEmpresa] = [
+					'rif' => $rif,
+					'token' => $token,
+					'fechas' => []
+				];
+			}
+			
+			// Agregar fecha si no existe
+			if (!in_array($fecha, $fechasEmpresas[$claveEmpresa]['fechas'])) {
+				$fechasEmpresas[$claveEmpresa]['fechas'][] = $fecha;
 			}
 		}
+		
+		// PASO 2: Resetear registros por empresa
+		foreach ($fechasEmpresas as $empresa) {
+			$table = $this->obtenerTablaEmpresa($empresa['rif'], $empresa['token']);
+			
+			if (!$table) {
+				continue; // Empresa no encontrada
+			}
+			
+			// PASO 3: Construir condiciones de fecha para SQL
+			$condicionesFecha = [];
+			foreach ($empresa['fechas'] as $fecha) {
+				// Convertir YYYYMMDD a formato de fecha SQL
+				$condicionesFecha[] = "c.date = STR_TO_DATE('$fecha', '%Y%m%d')";
+			}
+			
+			if (!empty($condicionesFecha)) {
+				$whereFechas = implode(' OR ', $condicionesFecha);
+				
+				// PASO 4: Resetear registros consolidados a estado pendiente
+				// Cambia estatus 2,3,4 → 1 (pendiente) para permitir reprocesamiento
+				$sqlReset = "UPDATE $table c 
+							 SET c.status_id = 1 
+							 WHERE ($whereFechas) 
+							 AND c.status_id IN (2, 3, 4)";
+				
+				$this->update_massive($sqlReset);
+			}
+		}
+	}
+
+		// ============================================
+		// FUNCIONES DE CONCILIACIÓN
+		// ============================================
 
 		//OBTENER TODAS LAS EMPRESAS SEGUN SU ID
 		public function getEnterprise($id)
@@ -505,6 +570,10 @@
 				'sin_coincidencia' => $totalSinCoincidencia
 			];
 		}
+
+		// ============================================
+		// FUNCIONES DE GESTIÓN DE TRANSACCIONES
+		// ============================================
 
 		//LE ASIGNO AL MOVIMIENTO UN USUARIO RESPONSABLE Y/O A CARGO
 		public function updateAsignacion($id, $userId)
@@ -665,6 +734,10 @@
 			return $this->update($sql, $arrData);
 		}	
 
+		// ============================================
+		// FUNCIONES AUXILIARES Y UTILIDADES
+		// ============================================
+
 		//BUSCAR LISTADO DE CLIENTES
 		public function buscarClientes($search)
 		{
@@ -680,241 +753,11 @@
 		return $this->select_all($sql);
 	}
 
-	// MÉTODOS AUXILIARES MEJORADOS PARA LA CONCILIACIÓN
-	private function agruparMovimientosPorEmpresa($movimientos) {
-		$grupos = [];
-		
-		foreach ($movimientos as $mov) {
-			// Validar datos del movimiento
-			if (!$this->validarMovimiento($mov)) {
-				continue;
-			}
-			
-			$claveEmpresa = $mov['rif'] . '_' . $mov['token'];
-			
-			if (!isset($grupos[$claveEmpresa])) {
-				$grupos[$claveEmpresa] = [
-					'datos' => [
-						'rif' => $mov['rif'],
-						'token' => $mov['token']
-					],
-					'movimientos' => []
-				];
-			}
-			
-			$grupos[$claveEmpresa]['movimientos'][] = $mov;
-		}
-		
-		return $grupos;
-	}
 
-	private function procesarMovimientosEmpresa($table, $movimientos) {
-		$totalCompleto = 0;
-		$totalParcial = 0;
-		$totalSinCoincidencia = 0;
-		
-		// Obtener todos los registros candidatos de una sola vez
-		$registrosCandidatos = $this->obtenerRegistrosCandidatosOptimizado($table, $movimientos);
-		
-		// Crear índices para búsqueda rápida
-		$indiceRegistros = $this->crearIndiceRegistros($registrosCandidatos);
-		
-		foreach ($movimientos as $mov) {
-			$bank = $mov['bank'];
-			$account = $mov['account'];
-			$refRecibida = $mov['reference'];
-			$fechaRecibida = $mov['date'];
-			$montoRecibido = abs(floatval($mov['amount']));
-			
-			// Buscar mejor coincidencia usando el índice
-			$mejorCoincidencia = $this->encontrarMejorCoincidenciaOptimizada(
-				$indiceRegistros, 
-				$montoRecibido, 
-				$refRecibida, 
-				$fechaRecibida,
-				$account
-			);
-			
-			// Procesar resultado
-			if ($mejorCoincidencia['registro']) {
-				$coincidencias = $mejorCoincidencia['coincidencias'];
-				
-				if ($coincidencias == 3) {
-					$totalCompleto++;
-					$status_id = 2; // auto_reconciled
-				} elseif ($coincidencias >= 2) {
-					$totalParcial++;
-					$status_id = 3; // partial_match
-				} else {
-					$totalSinCoincidencia++;
-					$status_id = 1; // no_match
-				}
-				
-				// Actualizar registro y removerlo del índice para evitar duplicados
-				$this->actualizarStatusRegistro($table, $mejorCoincidencia['registro']['id'], $status_id);
-				$this->removerRegistroDelIndice($indiceRegistros, $mejorCoincidencia['registro']['id']);
-			} else {
-				$totalSinCoincidencia++;
-			}
-		}
-		
-		return [
-			'completos' => $totalCompleto,
-			'parciales' => $totalParcial,
-			'sin_coincidencia' => $totalSinCoincidencia
-		];
-	}
 
-	private function obtenerRegistrosCandidatosOptimizado($table, $movimientos) {
-		// Extraer fechas y cuentas únicas
-		$fechasFormateadas = [];
-		$cuentas = [];
-		
-		foreach ($movimientos as $mov) {
-			// Convertir fecha de YYYYMMDD a YYYY-MM-DD para la consulta
-			$fechaFormateada = substr($mov['date'], 0, 4) . '-' . substr($mov['date'], 4, 2) . '-' . substr($mov['date'], 6, 2);
-			$fechasFormateadas[] = "'" . $fechaFormateada . "'";
-			$cuentas[] = "'" . $mov['account'] . "'";
-		}
-		
-		$fechasStr = implode(',', array_unique($fechasFormateadas));
-		$cuentasStr = implode(',', array_unique($cuentas));
-		
-		// Consulta simplificada compatible con MariaDB
-		$sqlBusqueda = "SELECT c.id, c.amount, c.reference, c.date, c.status_id, c.account
-						FROM $table c
-						WHERE c.status_id = 1
-						AND (
-							DATE(c.date) IN ($fechasStr)
-							OR c.account IN ($cuentasStr)
-						)
-						ORDER BY c.date DESC, c.id ASC";
-	
-		return $this->select_all($sqlBusqueda);
-	}
 
-	private function crearIndiceRegistros($registros) {
-		$indice = [
-			'por_fecha' => [],
-			'por_cuenta' => [],
-			'por_referencia' => [],
-			'por_monto' => [],
-			'todos' => []
-		];
-		
-		foreach ($registros as $reg) {
-			$id = $reg['id'];
-			$indice['todos'][$id] = $reg;
-			
-			// Índice por fecha
-			$fechaFormateada = $this->formatearFechaParaComparacion($reg['date']);
-			if ($fechaFormateada) {
-				$indice['por_fecha'][$fechaFormateada][] = $id;
-			}
-			
-			// Índice por cuenta
-			$indice['por_cuenta'][$reg['account']][] = $id;
-			
-			// Índice por referencia
-			$indice['por_referencia'][$reg['reference']][] = $id;
-			
-			// Índice por monto
-			$montoAbs = abs(floatval($reg['amount']));
-			$indice['por_monto'][$montoAbs][] = $id;
-		}
-		
-		return $indice;
-	}
 
-	private function encontrarMejorCoincidenciaOptimizada($indiceRegistros, $montoRecibido, $refRecibida, $fechaRecibida, $cuentaRecibida) {
-		$candidatos = [];
-		
-		// Buscar candidatos por fecha exacta (mayor prioridad)
-		if (isset($indiceRegistros['por_fecha'][$fechaRecibida])) {
-			foreach ($indiceRegistros['por_fecha'][$fechaRecibida] as $id) {
-				$candidatos[$id] = ($candidatos[$id] ?? 0) + 3; // Mayor peso para fecha
-			}
-		}
-		
-		// Buscar candidatos por monto exacto
-		if (isset($indiceRegistros['por_monto'][$montoRecibido])) {
-			foreach ($indiceRegistros['por_monto'][$montoRecibido] as $id) {
-				$candidatos[$id] = ($candidatos[$id] ?? 0) + 2; // Peso medio para monto
-			}
-		}
-		
-		// Buscar candidatos por referencia exacta
-		if (isset($indiceRegistros['por_referencia'][$refRecibida])) {
-			foreach ($indiceRegistros['por_referencia'][$refRecibida] as $id) {
-				$candidatos[$id] = ($candidatos[$id] ?? 0) + 2; // Peso medio para referencia
-			}
-		}
-		
-		// Buscar candidatos por cuenta
-		if (isset($indiceRegistros['por_cuenta'][$cuentaRecibida])) {
-			foreach ($indiceRegistros['por_cuenta'][$cuentaRecibida] as $id) {
-				$candidatos[$id] = ($candidatos[$id] ?? 0) + 1; // Menor peso para cuenta
-			}
-		}
-		
-		// Si no hay candidatos preseleccionados, evaluar todos
-		if (empty($candidatos)) {
-			foreach ($indiceRegistros['todos'] as $id => $reg) {
-				$candidatos[$id] = 0;
-			}
-		}
-		
-		$mejorCoincidencia = null;
-		$maxCoincidencias = 0;
-		
-		// Evaluar candidatos
-		foreach ($candidatos as $id => $pesoInicial) {
-			if (!isset($indiceRegistros['todos'][$id])) {
-				continue; // Registro ya procesado
-			}
-			
-			$reg = $indiceRegistros['todos'][$id];
-			$coincidencias = $this->calcularCoincidenciasExactas($reg, $montoRecibido, $refRecibida, $fechaRecibida);
-			
-			// Usar peso inicial como desempate
-			$puntuacionTotal = $coincidencias * 10 + $pesoInicial;
-			
-			if ($coincidencias > $maxCoincidencias || 
-				($coincidencias == $maxCoincidencias && $puntuacionTotal > ($maxCoincidencias * 10))) {
-				$maxCoincidencias = $coincidencias;
-				$mejorCoincidencia = $reg;
-			}
-		}
-		
-		return [
-			'registro' => $mejorCoincidencia,
-			'coincidencias' => $maxCoincidencias
-		];
-	}
 
-	private function calcularCoincidenciasExactas($reg, $montoRecibido, $refRecibida, $fechaRecibida) {
-		$coincidencias = 0;
-		
-		// Verificar monto (comparación exacta)
-		$montoBD = abs(floatval($reg['amount']));
-		if ($montoRecibido == $montoBD) {
-			$coincidencias++;
-		}
-		
-		// Verificar referencia (comparación exacta)
-		$refBD = $reg['reference'];
-		if ($refRecibida == $refBD) {
-			$coincidencias++;
-		}
-		
-		// Verificar fecha (mejorada)
-		$fechaFormateada = $this->formatearFechaParaComparacion($reg['date']);
-		if ($fechaFormateada && $fechaFormateada == $fechaRecibida) {
-			$coincidencias++;
-		}
-		
-		return $coincidencias;
-	}
 
 	private function formatearFechaParaComparacion($fechaBD) {
 		// Intentar múltiples formatos de fecha
@@ -935,101 +778,54 @@
 		return null;
 	}
 
-	private function removerRegistroDelIndice(&$indiceRegistros, $id) {
-		// Remover de todos los índices
-		unset($indiceRegistros['todos'][$id]);
-		
-		foreach ($indiceRegistros['por_fecha'] as &$ids) {
-			$ids = array_filter($ids, function($regId) use ($id) {
-				return $regId != $id;
-			});
-		}
-		
-		foreach ($indiceRegistros['por_cuenta'] as &$ids) {
-			$ids = array_filter($ids, function($regId) use ($id) {
-				return $regId != $id;
-			});
-		}
-		
-		foreach ($indiceRegistros['por_referencia'] as &$ids) {
-			$ids = array_filter($ids, function($regId) use ($id) {
-				return $regId != $id;
-			});
-		}
-		
-		foreach ($indiceRegistros['por_monto'] as &$ids) {
-			$ids = array_filter($ids, function($regId) use ($id) {
-				return $regId != $id;
-			});
-		}
-	}
 
-		private function buscarRegistroConReglas($table, $bank, $account, $fechaRecibida, $montoRecibido, $refRecibida) {
 
-			// Obtener reglas de diferencial y referencia usando el método existente
-			$reglas = $this->obtenerReglasBanco($bank, $account, '', '');
-			$diferencialBs = isset($reglas['monto']) ? floatval($reglas['monto']) : 0;
-			$digitosReferencia = isset($reglas['referencia']) ? intval($reglas['referencia']) : 0;
-			
-			// Formatear fecha - detectar formato automáticamente
-			$fechaFormateada = $fechaRecibida;
-			if (strlen($fechaRecibida) == 8 && is_numeric($fechaRecibida)) {
-				// Formato YYYYMMDD -> YYYY-MM-DD
-				$fechaFormateada = substr($fechaRecibida, 0, 4) . '-' . substr($fechaRecibida, 4, 2) . '-' . substr($fechaRecibida, 6, 2);
-			} elseif (strpos($fechaRecibida, '/') !== false) {
-				// Formato YYYY/MM/DD -> YYYY-MM-DD
-				$fechaFormateada = str_replace('/', '-', $fechaRecibida);
-			}
-			// Si ya está en formato YYYY-MM-DD, se mantiene igual
-			
-			// Construir condiciones de búsqueda
-			$condicionMonto = "";
-			if ($diferencialBs > 0) {
-				$montoMin = $montoRecibido - $diferencialBs;
-				$montoMax = $montoRecibido + $diferencialBs;
-				$condicionMonto = "CASE WHEN ABS(c.amount) BETWEEN $montoMin AND $montoMax THEN 1 ELSE 0 END";
-			} else {
-				// Sin reglas de diferencial, comparación exacta (0 puntos si no coincide exactamente)
-				$condicionMonto = "CASE WHEN ABS(c.amount) = $montoRecibido THEN 1 ELSE 0 END";
-			}
-			
-			$condicionReferencia = "";
-			if ($digitosReferencia > 0) {
-				$ultimosDigitos = substr($refRecibida, -$digitosReferencia);
-				$condicionReferencia = "CASE WHEN RIGHT(c.reference, $digitosReferencia) = '$ultimosDigitos' THEN 1 ELSE 0 END";
-			} else {
-				$condicionReferencia = "CASE WHEN c.reference = '$refRecibida' THEN 1 ELSE 0 END";
-			}
-			
-			// Consulta SQL con sistema de puntuación (al menos 2 de 3 coincidencias)
-			$sqlBusqueda = "SELECT c.id, c.amount, c.reference, c.date, c.status_id, c.account,
-							(CASE WHEN DATE(c.date) = '$fechaFormateada' THEN 1 ELSE 0 END) as coincide_fecha,
-							($condicionMonto) as coincide_monto,
-							($condicionReferencia) as coincide_referencia,
-							((CASE WHEN DATE(c.date) = '$fechaFormateada' THEN 1 ELSE 0 END) + 
-							($condicionMonto) + 
-							($condicionReferencia)) as puntuacion_total
-							FROM $table c
-							WHERE c.status_id = 1
-							AND c.account = '$account'
-							HAVING puntuacion_total >= 2
-							ORDER BY puntuacion_total DESC, c.date DESC, c.id ASC
-							LIMIT 1";
+		// ============================================
+		// FUNCIONES PRIVADAS DE CONCILIACIÓN
+		// ============================================
 
-			return $this->select($sqlBusqueda);
-		}
-
-	// NUEVA FUNCIÓN PARA EVALUAR CONCILIACIÓN SEGÚN LAS REGLAS ESPECIFICADAS
-	private function evaluarConciliacion($table, $bank, $account, $fechaRecibida, $montoRecibido, $refRecibida, $rif, $token) {
-		// Obtener reglas de diferencial y referencia
+	/**
+	 * EVALUAR CONCILIACIÓN DE UN MOVIMIENTO
+	 * 
+	 * Busca registros similares en la base de datos y determina el estatus
+	 * basado en los valores autocon y coincidence del sistema externo.
+	 * 
+	 * FLUJO DEL PROCESO:
+	 * 1. Obtiene reglas de conciliación del banco
+	 * 2. Busca registros candidatos en la BD
+	 * 3. Evalúa coincidencias (referencia, monto, fecha)
+	 * 4. Determina estatus según autocon/coincidence
+	 * 
+	 * @param string $table Tabla de movimientos de la empresa
+	 * @param string $bank ID del banco
+	 * @param string $account Número de cuenta
+	 * @param string $fechaRecibida Fecha del movimiento (YYYYMMDD)
+	 * @param float $montoRecibido Monto del movimiento
+	 * @param string $refRecibida Referencia del movimiento
+	 * @param string $rif RIF de la empresa
+	 * @param string $token Token de autenticación
+	 * @param int $autocon Indicador de conciliación automática (0 o 1)
+	 * @param int $coincidence Indicador de coincidencia parcial (0 o 1)
+	 * @return array ['registro' => array|null, 'status_id' => int]
+	 */
+	private function evaluarConciliacion($table, $bank, $account, $fechaRecibida, $montoRecibido, $refRecibida, $rif, $token, $autocon, $coincidence) {
+		// ==========================================
+		// PASO 1: OBTENER REGLAS DE CONCILIACIÓN
+		// ==========================================
+		
+		// Consultar reglas configuradas para este banco específico
 		$reglas = $this->obtenerReglasBanco($bank, $account, $rif, $token);
 		$diferencialBs = isset($reglas['monto']) ? floatval($reglas['monto']) : null;
 		$digitosReferencia = isset($reglas['referencia']) ? intval($reglas['referencia']) : null;
 		
-		// Formatear fecha para comparación
+		// Formatear fecha para búsqueda en BD
 		$fechaFormateada = $this->formatearFechaParaBusqueda($fechaRecibida);
 		
-		// Buscar registros candidatos
+		// ==========================================
+		// PASO 2: BUSCAR REGISTROS CANDIDATOS
+		// ==========================================
+		
+		// Buscar solo registros pendientes (status_id = 1) de la misma cuenta
 		$sqlBusqueda = "SELECT c.id, c.amount, c.reference, c.date, c.status_id, c.account
 						FROM $table c
 						WHERE c.status_id = 1
@@ -1038,23 +834,38 @@
 		
 		$registros = $this->select_all($sqlBusqueda);
 		
-		$mejorCoincidencia = null;
-		$mejorStatus = 1; // Por defecto no_match
+		// ==========================================
+		// PASO 3: EVALUAR COINCIDENCIAS
+		// ==========================================
 		
+		$mejorCoincidencia = null;
+		$mejorStatus = 1; // Por defecto: no conciliado
+		
+		// Evaluar cada registro candidato
 		foreach ($registros as $reg) {
-			// Evaluar cada tipo de coincidencia
+			// Evaluar coincidencias individuales
 			$coincideReferencia = $this->evaluarCoincidenciaReferencia($refRecibida, $reg['reference'], $digitosReferencia);
 			$coincideMonto = $this->evaluarCoincidenciaMonto($montoRecibido, abs(floatval($reg['amount'])), $diferencialBs);
 			$coincideFecha = $this->evaluarCoincidenciaFecha($fechaRecibida, $reg['date']);
 			
-			// Aplicar reglas de conciliación
-			$status = $this->determinarStatusPorCoincidencias($coincideReferencia, $coincideMonto, $coincideFecha);
+			// Contar coincidencias encontradas
+			$coincidenciasEncontradas = 0;
+			if ($coincideReferencia) $coincidenciasEncontradas++;
+			if ($coincideMonto) $coincidenciasEncontradas++;
+			if ($coincideFecha) $coincidenciasEncontradas++;
 			
-			// Si encontramos una coincidencia válida (estatus 2 o 3), la tomamos
-			if ($status == 2 || $status == 3) {
+			// ==========================================
+			// PASO 4: VALIDAR COINCIDENCIAS MÍNIMAS
+			// ==========================================
+			
+			// Requiere al menos 2 de 3 coincidencias para ser válido
+			if ($coincidenciasEncontradas >= 2) {
 				$mejorCoincidencia = $reg;
-				$mejorStatus = $status;
-				break; // Tomamos la primera coincidencia válida
+				
+				// Determinar estatus final basado en autocon/coincidence
+				$mejorStatus = $this->determinarStatusPorAutoconCoincidence($autocon, $coincidence);
+				
+				break; // Tomar la primera coincidencia válida
 			}
 		}
 		
@@ -1064,77 +875,137 @@
 		];
 	}
 	
-	// EVALUAR COINCIDENCIA DE REFERENCIA CON REGLAS DE DÍGITOS
+	/**
+	 * EVALUAR COINCIDENCIA DE REFERENCIA
+	 * 
+	 * Compara las referencias según las reglas configuradas:
+	 * - Si digitosReferencia = null: Comparación exacta completa
+	 * - Si digitosReferencia = N: Compara solo los últimos N dígitos
+	 * 
+	 * Ejemplo: Si digitosReferencia = 4
+	 * - Referencia A: "12345678" → Últimos 4: "5678"
+	 * - Referencia B: "87655678" → Últimos 4: "5678"
+	 * - Resultado: COINCIDE
+	 * 
+	 * @param string $refRecibida Referencia del sistema externo
+	 * @param string $refBD Referencia de la base de datos
+	 * @param int|null $digitosReferencia Número de dígitos a comparar (null = completa)
+	 * @return bool True si coinciden, False si no
+	 */
 	private function evaluarCoincidenciaReferencia($refRecibida, $refBD, $digitosReferencia) {
 		if ($digitosReferencia === null || $digitosReferencia <= 0) {
-			// Sin reglas de dígitos, comparación exacta
+			// Sin reglas: comparación exacta de toda la referencia
 			return $refRecibida == $refBD;
 		} else {
-			// Con reglas de dígitos, comparar últimos N dígitos
+			// Con reglas: comparar solo los últimos N dígitos
 			$ultimosRecibida = substr($refRecibida, -$digitosReferencia);
 			$ultimosBD = substr($refBD, -$digitosReferencia);
 			return $ultimosRecibida == $ultimosBD;
 		}
 	}
 	
-	// EVALUAR COINCIDENCIA DE MONTO CON REGLAS DE DIFERENCIAL
+	/**
+	 * EVALUAR COINCIDENCIA DE MONTO
+	 * 
+	 * Compara los montos según las reglas de diferencial configuradas:
+	 * - Si diferencialBs = null: Comparación exacta
+	 * - Si diferencialBs = N: Acepta diferencia de ±N bolívares
+	 * 
+	 * Ejemplo: Si diferencialBs = 100
+	 * - Monto A: 1500.00
+	 * - Monto B: 1450.00
+	 * - Diferencia: 50.00 (≤ 100) → COINCIDE
+	 * 
+	 * @param float $montoRecibido Monto del sistema externo
+	 * @param float $montoBD Monto de la base de datos
+	 * @param float|null $diferencialBs Diferencial permitido (null = exacto)
+	 * @return bool True si coinciden, False si no
+	 */
 	private function evaluarCoincidenciaMonto($montoRecibido, $montoBD, $diferencialBs) {
 		if ($diferencialBs === null || $diferencialBs <= 0) {
-			// Sin reglas de diferencial, comparación exacta
+			// Sin reglas: comparación exacta del monto
 			return $montoRecibido == $montoBD;
 		} else {
-			// Con reglas de diferencial, verificar si está dentro del rango
+			// Con reglas: verificar si la diferencia está dentro del rango permitido
 			$diferencia = abs($montoRecibido - $montoBD);
 			return $diferencia <= $diferencialBs;
 		}
 	}
 	
-	// EVALUAR COINCIDENCIA DE FECHA
+	/**
+	 * EVALUAR COINCIDENCIA DE FECHA
+	 * 
+	 * Compara las fechas normalizando ambos formatos:
+	 * - Fecha recibida: YYYYMMDD → YYYY-MM-DD
+	 * - Fecha BD: Varios formatos → YYYYMMDD
+	 * 
+	 * @param string $fechaRecibida Fecha del sistema externo (YYYYMMDD)
+	 * @param string $fechaBD Fecha de la base de datos (varios formatos)
+	 * @return bool True si coinciden, False si no
+	 */
 	private function evaluarCoincidenciaFecha($fechaRecibida, $fechaBD) {
+		// Normalizar ambas fechas para comparación
 		$fechaFormateada = $this->formatearFechaParaBusqueda($fechaRecibida);
 		$fechaBDFormateada = $this->formatearFechaParaComparacion($fechaBD);
 		return $fechaFormateada == $fechaBDFormateada;
 	}
 	
-	// DETERMINAR ESTATUS SEGÚN LAS REGLAS DE CONCILIACIÓN ESPECIFICADAS
-	private function determinarStatusPorCoincidencias($coincideReferencia, $coincideMonto, $coincideFecha) {
-		// Reglas según tu especificación:
-		// Coincidan:
-		// - La referencia es igual, monto igual y fecha igual = estatus 2
-		// - La referencia es igual, el monto es igual, la fecha es diferente = estatus 3
-		// - La referencia es igual, el monto es diferente la fecha es igual = estatus 3
-		
-		// No coincidan:
-		// - La referencia es igual, el monto y la fecha son diferentes = estatus 1
-		// - La referencia es diferente = estatus 1
-		
-		if (!$coincideReferencia) {
-			return 1; // no_match - referencia diferente
+	/**
+	 * DETERMINAR ESTATUS SEGÚN AUTOCON Y COINCIDENCE
+	 * 
+	 * El sistema externo envía indicadores que determinan el estatus final:
+	 * 
+	 * REGLAS DE ESTATUS:
+	 * ┌─────────┬─────────────┬─────────────────────────────────┐
+	 * │ autocon │ coincidence │ Estatus │ Descripción           │
+	 * ├─────────┼─────────────┼─────────┼─────────────────────────┤
+	 * │    1    │      0      │    2    │ Conciliación completa  │
+	 * │    0    │      1      │    3    │ Conciliación parcial   │
+	 * │    0    │      0      │    1    │ No conciliado          │
+	 * └─────────┴─────────────┴─────────┴─────────────────────────┘
+	 * 
+	 * @param int $autocon Indicador de conciliación automática (0 o 1)
+	 * @param int $coincidence Indicador de coincidencia parcial (0 o 1)
+	 * @return int Estatus final (1, 2 o 3)
+	 */
+	private function determinarStatusPorAutoconCoincidence($autocon, $coincidence) {
+		if ($autocon == 1 && $coincidence == 0) {
+			return 2; // Conciliación completa
+		} elseif ($autocon == 0 && $coincidence == 1) {
+			return 3; // Conciliación parcial
+		} else {
+			return 1; // No conciliado
 		}
-		
-		if ($coincideReferencia && $coincideMonto && $coincideFecha) {
-			return 2; // auto_reconciled - todo coincide
-		}
-		
-		if ($coincideReferencia && ($coincideMonto || $coincideFecha)) {
-			return 3; // partial_match - referencia igual + (monto igual O fecha igual)
-		}
-		
-		return 1; // no_match - referencia igual pero monto Y fecha diferentes
 	}
 	
-	// FORMATEAR FECHA PARA BÚSQUEDA EN BD
+	/**
+	 * FORMATEAR FECHA PARA BÚSQUEDA EN BASE DE DATOS
+	 * 
+	 * Convierte diferentes formatos de fecha a formato SQL estándar (YYYY-MM-DD)
+	 * 
+	 * FORMATOS SOPORTADOS:
+	 * - YYYYMMDD (20250701) → 2025-07-01
+	 * - YYYY/MM/DD (2025/07/01) → 2025-07-01
+	 * - YYYY-MM-DD (ya formateado) → sin cambios
+	 * 
+	 * @param string $fechaRecibida Fecha en formato original
+	 * @return string Fecha en formato YYYY-MM-DD
+	 */
 	private function formatearFechaParaBusqueda($fechaRecibida) {
 		if (strlen($fechaRecibida) == 8 && is_numeric($fechaRecibida)) {
-			// Formato YYYYMMDD -> YYYY-MM-DD
+			// Formato YYYYMMDD → YYYY-MM-DD
 			return substr($fechaRecibida, 0, 4) . '-' . substr($fechaRecibida, 4, 2) . '-' . substr($fechaRecibida, 6, 2);
 		} elseif (strpos($fechaRecibida, '/') !== false) {
-			// Formato YYYY/MM/DD -> YYYY-MM-DD
+			// Formato YYYY/MM/DD → YYYY-MM-DD
 			return str_replace('/', '-', $fechaRecibida);
 		}
-		// Si ya está en formato YYYY-MM-DD, se mantiene igual
+		// Si ya está en formato YYYY-MM-DD, mantener igual
 		return $fechaRecibida;
 	}
+
+		// ============================================
+		// FUNCIONES DE LOGGING Y UTILIDADES
+		// ============================================
 
 	private function registrarLogMovimientos($movimientos, $tipo) {
 		$logFile = 'movimientos.log';
