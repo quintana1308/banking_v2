@@ -212,15 +212,22 @@
 			$autocon = isset($mov['autocon']) ? intval($mov['autocon']) : 0;
 			$coincidence = isset($mov['coincidence']) ? intval($mov['coincidence']) : 0;
 			
+			if($refRecibida == '10880976'){
+				$resultadoConciliacion = $this->evaluarConciliacion(
+					$table, $bank, $account, $fechaRecibida, 
+					$montoRecibido, $refRecibida, $rif, $token, 
+					$autocon, $coincidence
+				);
+			}
 			// PASO 3.5: Buscar registro similar en la base de datos
-			$resultadoConciliacion = $this->evaluarConciliacion(
+			/*$resultadoConciliacion = $this->evaluarConciliacion(
 				$table, $bank, $account, $fechaRecibida, 
 				$montoRecibido, $refRecibida, $rif, $token, 
 				$autocon, $coincidence
-			);
+			);*/
 			
 			// PASO 3.6: Procesar resultado de la conciliación
-			if ($resultadoConciliacion['registro']) {
+			if (/*$resultadoConciliacion['registro']*/true) {
 				// Se encontró un registro similar
 				$status_id = $resultadoConciliacion['status_id'];
 				
