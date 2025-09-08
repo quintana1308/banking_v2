@@ -976,7 +976,7 @@
 
 		$logFile = 'evaluacion_fecha.log';
     			$fechaActual = date('Y-m-d H:i:s');
-    			$logEntry = "$fechaActual - fecha recibida:" . $fechaFormateada . " - fechaBD:" . $fechaBD . "\n";
+    			$logEntry = "$fechaActual - NUEVO fecha recibida:" . $fechaFormateada . " - fechaBD:" . $fechaBD . "\n";
     			file_put_contents($logFile, $logEntry, FILE_APPEND);
 
 		return $fechaFormateada == $fechaBD;
