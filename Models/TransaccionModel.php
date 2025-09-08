@@ -972,12 +972,15 @@
 	 */
 	private function evaluarCoincidenciaFecha($fechaRecibida, $fechaBD) {
 		// Normalizar ambas fechas para comparación
-		$logFile = 'evaluacion_fecha.log';
-    	$fechaActual = date('Y-m-d H:i:s');
-    	$logEntry = "$fechaActual - fecha_Recibida:" . $fechaRecibida . " - fechaBD:" . $fechaBD . "\n";
-    	file_put_contents($logFile, $logEntry, FILE_APPEND);
+		
 		$fechaFormateada = $this->formatearFechaParaBusqueda($fechaRecibida);
 		$fechaBDFormateada = $this->formatearFechaParaComparacion($fechaBD);
+
+		$logFile = 'evaluacion_fecha.log';
+    	$fechaActual = date('Y-m-d H:i:s');
+    	$logEntry = "$fechaActual - fecha_Recibida:" . $fechaFormateada . " - fechaBD:" . $fechaBDFormateada . "\n";
+    	file_put_contents($logFile, $logEntry, FILE_APPEND);
+
 		return $fechaFormateada == $fechaBDFormateada;
 	}
 	
