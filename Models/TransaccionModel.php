@@ -858,14 +858,6 @@
 			$coincideMonto = $this->evaluarCoincidenciaMonto($montoRecibido, abs(floatval($reg['amount'])), $diferencialBs);
 			$coincideFecha = $this->evaluarCoincidenciaFecha($fechaRecibida, $reg['date']);
 			
-			// DEBUG: Logging para el caso específico de referencia 391
-			if (strpos($refRecibida, '391') !== false || strpos($reg['reference'], '00000000391') !== false) {
-				$logFile = 'debug_391.log';
-				$fechaActual = date('Y-m-d H:i:s');
-				$logEntry = "$fechaActual - REF_RECIBIDA: $refRecibida | REF_BD: {$reg['reference']} | COINCIDE_REF: " . ($coincideReferencia ? 'SI' : 'NO') . " | MONTO_RECIBIDO: $montoRecibido | MONTO_BD: {$reg['amount']} | COINCIDE_MONTO: " . ($coincideMonto ? 'SI' : 'NO') . " | FECHA_RECIBIDA: $fechaRecibida | FECHA_BD: {$reg['date']} | COINCIDE_FECHA: " . ($coincideFecha ? 'SI' : 'NO') . "\n";
-				file_put_contents($logFile, $logEntry, FILE_APPEND);
-			}
-			
 			// Si hay coincidencia exacta en los 3 criterios, es una coincidencia perfecta
 			if ($coincideReferencia && $coincideMonto && $coincideFecha) {
 				$mejorCoincidencia = $reg;
@@ -890,14 +882,6 @@
 				if ($coincideReferencia) $coincidenciasEncontradas++;
 				if ($coincideMonto) $coincidenciasEncontradas++;
 				if ($coincideFecha) $coincidenciasEncontradas++;
-				
-				// DEBUG: Logging para coincidencias parciales del caso 391
-				if (strpos($refRecibida, '391') !== false || strpos($reg['reference'], '00000000391') !== false) {
-					$logFile = 'debug_391_parcial.log';
-					$fechaActual = date('Y-m-d H:i:s');
-					$logEntry = "$fechaActual - PARCIAL - REF: {$reg['reference']} | COINCIDENCIAS: $coincidenciasEncontradas/3 | REF: " . ($coincideReferencia ? 'SI' : 'NO') . " | MONTO: " . ($coincideMonto ? 'SI' : 'NO') . " | FECHA: " . ($coincideFecha ? 'SI' : 'NO') . " | AUTOCON: $autocon | COINCIDENCE: $coincidence\n";
-					file_put_contents($logFile, $logEntry, FILE_APPEND);
-				}
 				
 				// Requiere al menos 2 de 3 coincidencias para ser válido
 				if ($coincidenciasEncontradas >= 2) {
@@ -988,9 +972,10 @@
 	 */
 	private function evaluarCoincidenciaFecha($fechaRecibida, $fechaBD) {
 		// Normalizar ambas fechas para comparación
-		$fechaFormateada = $this->formatearFechaParaBusqueda($fechaRecibida);
+		$fechaRecibidaFormateada = $this->formatearFechaParaBusqueda($fechaRecibida);
+		$fechaBDFormateada = $this->formatearFechaParaComparacion($fechaBD);
 
-		return $fechaFormateada == $fechaBD;
+		return $fechaRecibidaFormateada == $fechaBDFormateada;
 	}
 	
 	/**
