@@ -848,6 +848,23 @@
 			$coincideMonto = $this->evaluarCoincidenciaMonto($montoRecibido, abs(floatval($reg['amount'])), $diferencialBs);
 			$coincideFecha = $this->evaluarCoincidenciaFecha($fechaRecibida, $reg['date']);
 			
+			if($refRecibida == '10880976'){
+				$logFile = 'coincidencias_referencia.log';
+    			$fechaActual = date('Y-m-d H:i:s');
+    			$logEntry = "$fechaActual - " . json_encode($coincideReferencia) . "\n";
+    			file_put_contents($logFile, $logEntry, FILE_APPEND);
+
+				$logFile = 'coincidencias_monto.log';
+    			$fechaActual = date('Y-m-d H:i:s');
+    			$logEntry = "$fechaActual - " . json_encode($coincideMonto) . "\n";
+    			file_put_contents($logFile, $logEntry, FILE_APPEND);
+
+				$logFile = 'coincidencias_fecha.log';
+    			$fechaActual = date('Y-m-d H:i:s');
+    			$logEntry = "$fechaActual - " . json_encode($coincideFecha) . "\n";
+    			file_put_contents($logFile, $logEntry, FILE_APPEND);
+			}
+			
 			// Contar coincidencias encontradas
 			$coincidenciasEncontradas = 0;
 			if ($coincideReferencia) $coincidenciasEncontradas++;
