@@ -1,0 +1,69 @@
+.iq-header-img::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgb(0 0 0 / 14%);
+}
+
+.gradient {
+    background: none !important;
+}
+
+.fondo-error{
+    background-image: url(http://localhost/service-supermarket/Assets/images/header-img.jpg);
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+
+.loadingNew {
+    background-color: #1518246e !important;
+    top: 0 !important;
+}
+
+
+
+.bank-indicator {
+    min-width: 200px;
+}
+
+.bank-selected-display {
+    transition: all 0.3s ease;
+}
+
+#selectedBankDisplay {
+    font-weight: 500;
+    border-radius: 20px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+#selectedBankDisplay:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.bank-indicator .text-muted {
+    font-weight: 500;
+}
+
+/* Responsive para móviles */
+@media (max-width: 768px) {
+    .card-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 10px;
+    }
+    
+    .bank-indicator {
+        width: 100%;
+        min-width: auto;
+    }
+    
+    .bank-indicator .d-flex {
+        justify-content: center;
+        width: 100%;
+    }
+}
