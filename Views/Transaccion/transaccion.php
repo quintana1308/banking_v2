@@ -137,7 +137,6 @@ ob_start();
                                         <option value="">Todos</option>
                                         <option value="conciliados">Conciliados</option>
                                         <option value="no_conciliados">No Conciliados</option>
-                                        <option value="pendiente">Pendientes</option>
                                         <option value="parcial">Parcial</option>
                                         <option value="asignados">Asignados</option>
                                     </select>
