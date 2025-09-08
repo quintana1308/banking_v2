@@ -211,14 +211,13 @@
 			// autocon=0, coincidence=0 → Estatus 1 (No conciliado)
 			$autocon = isset($mov['autocon']) ? intval($mov['autocon']) : 0;
 			$coincidence = isset($mov['coincidence']) ? intval($mov['coincidence']) : 0;
+
+			$resultadoConciliacion = $this->evaluarConciliacion(
+				$table, $bank, $account, $fechaRecibida, 
+				$montoRecibido, $refRecibida, $rif, $token, 
+				$autocon, $coincidence
+			);
 			
-			if($refRecibida == '10880976'){
-				$resultadoConciliacion = $this->evaluarConciliacion(
-					$table, $bank, $account, $fechaRecibida, 
-					$montoRecibido, $refRecibida, $rif, $token, 
-					$autocon, $coincidence
-				);
-			}
 			// PASO 3.5: Buscar registro similar en la base de datos
 			/*$resultadoConciliacion = $this->evaluarConciliacion(
 				$table, $bank, $account, $fechaRecibida, 
@@ -851,13 +850,13 @@
 		// Evaluar cada registro candidato
 		foreach ($registros as $reg) {
 			// Evaluar coincidencias individuales
+			$coincideReferencia = $this->evaluarCoincidenciaReferencia($refRecibida, $reg['reference'], $digitosReferencia);
+			$coincideMonto = $this->evaluarCoincidenciaMonto($montoRecibido, abs(floatval($reg['amount'])), $diferencialBs);
+			$coincideFecha = $this->evaluarCoincidenciaFecha($fechaRecibida, $reg['date']);
 			
-			
-			if($reg['reference'] == '00010880976'){
+			/*if($reg['reference'] == '00010880976'){
 
-				$coincideReferencia = $this->evaluarCoincidenciaReferencia($refRecibida, $reg['reference'], $digitosReferencia);
-				$coincideMonto = $this->evaluarCoincidenciaMonto($montoRecibido, abs(floatval($reg['amount'])), $diferencialBs);
-				$coincideFecha = $this->evaluarCoincidenciaFecha($fechaRecibida, $reg['date']);
+
 				
 				$logFile = 'coincidencias_referencia.log';
     			$fechaActual = date('Y-m-d H:i:s');
@@ -873,7 +872,7 @@
     			$fechaActual = date('Y-m-d H:i:s');
     			$logEntry = "$fechaActual - fecha:" . $reg['date'] . " - " . json_encode($coincideFecha) . "\n";
     			file_put_contents($logFile, $logEntry, FILE_APPEND);
-			}
+			}*/
 			
 			// Contar coincidencias encontradas
 			$coincidenciasEncontradas = 0;
@@ -973,11 +972,6 @@
 	private function evaluarCoincidenciaFecha($fechaRecibida, $fechaBD) {
 		// Normalizar ambas fechas para comparación
 		$fechaFormateada = $this->formatearFechaParaBusqueda($fechaRecibida);
-
-		$logFile = 'evaluacion_fecha.log';
-    			$fechaActual = date('Y-m-d H:i:s');
-    			$logEntry = "$fechaActual - NUEVO fecha recibida:" . $fechaFormateada . " - fechaBD:" . $fechaBD . "\n";
-    			file_put_contents($logFile, $logEntry, FILE_APPEND);
 
 		return $fechaFormateada == $fechaBD;
 	}
