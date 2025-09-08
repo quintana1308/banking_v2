@@ -109,7 +109,7 @@
 				$where = " m.date BETWEEN '$desde' AND '$hasta'";
 			}
 
-			$sql = "SELECT b.id_bank AS bank, b.account, m.reference, m.`date`, m.amount, m.responsible
+			$sql = "SELECT b.id_bank AS bank, b.account, m.reference, m.`date`, m.amount, m.responsible, m.id_insert
 				FROM $table m
 				INNER JOIN banco b ON b.account = m.account
 				LEFT JOIN conciliation_anthony mm
@@ -832,8 +832,19 @@
 		// ==========================================
 		
 		// Buscar registros pendientes (status_id = 1) de la misma cuenta
-		// OPTIMIZACIÓN: Buscar coincidencia exacta primero para evitar conflictos con duplicados
-		$sqlBusqueda = "SELECT c.id, c.amount, c.reference, c.date, c.status_id, c.account
+		// PRIORIDAD 1: Buscar coincidencia PERFECTA (referencia + monto + fecha)
+		$sqlBusquedaPerfecta = "SELECT c.id, c.amount, c.reference, c.date, c.status_id, c.account
+						FROM $table c
+						WHERE c.status_id = 1
+						AND c.account = '$account'
+						AND c.reference = '$refRecibida'
+						AND ABS(c.amount) = $montoRecibido
+						AND c.date = '$fechaFormateada'
+						ORDER BY c.date DESC, c.id ASC
+						LIMIT 1";
+		
+		// PRIORIDAD 2: Buscar coincidencia exacta (referencia + monto, fecha diferente)
+		$sqlBusquedaExacta = "SELECT c.id, c.amount, c.reference, c.date, c.status_id, c.account
 						FROM $table c
 						WHERE c.status_id = 1
 						AND c.account = '$account'
@@ -842,36 +853,33 @@
 						ORDER BY c.date DESC, c.id ASC
 						LIMIT 1";
 		
-		$registrosExactos = $this->select_all($sqlBusqueda);
-		
 		// ==========================================
-		// PASO 3: EVALUAR COINCIDENCIAS EXACTAS PRIMERO
+		// PASO 3: EVALUAR COINCIDENCIAS POR PRIORIDAD
 		// ==========================================
 		
 		$mejorCoincidencia = null;
 		$mejorStatus = 1; // Por defecto: no conciliado
 		
-		// PRIORIDAD 1: Buscar coincidencia exacta (referencia + monto iguales)
-		if (!empty($registrosExactos)) {
-			foreach ($registrosExactos as $reg) {
-				$coincideReferencia = $this->evaluarCoincidenciaReferencia($refRecibida, $reg['reference'], $digitosReferencia);
-				$coincideMonto = $this->evaluarCoincidenciaMonto($montoRecibido, abs(floatval($reg['amount'])), $diferencialBs);
-				$coincideFecha = $this->evaluarCoincidenciaFecha($fechaRecibida, $reg['date']);
-				
-				// Si coinciden referencia y monto (ya filtrados en SQL), evaluar fecha
-				if ($coincideReferencia && $coincideMonto) {
-					$mejorCoincidencia = $reg;
-					$mejorStatus = $this->determinarStatusPorAutoconCoincidence($autocon, $coincidence);
-					break; // Tomar la primera coincidencia exacta
-				}
+		// PRIORIDAD 1: Buscar coincidencia PERFECTA (3 de 3 criterios)
+		$registrosPerfectos = $this->select_all($sqlBusquedaPerfecta);
+		if (!empty($registrosPerfectos)) {
+			$mejorCoincidencia = $registrosPerfectos[0];
+			$mejorStatus = $this->determinarStatusPorAutoconCoincidence($autocon, $coincidence);
+		} else {
+			// PRIORIDAD 2: Buscar coincidencia EXACTA (referencia + monto, fecha diferente)
+			$registrosExactos = $this->select_all($sqlBusquedaExacta);
+			if (!empty($registrosExactos)) {
+				$mejorCoincidencia = $registrosExactos[0];
+				$mejorStatus = $this->determinarStatusPorAutoconCoincidence($autocon, $coincidence);
 			}
 		}
 		
+		
 		// ==========================================
-		// PASO 4: SI NO HAY EXACTA, BUSCAR PARCIAL
+		// PRIORIDAD 3: SI NO HAY EXACTA, BUSCAR PARCIAL
 		// ==========================================
 		
-		// Si no se encontró coincidencia exacta, buscar coincidencia parcial
+		// Si no se encontró coincidencia exacta ni perfecta, buscar coincidencia parcial
 		if (!$mejorCoincidencia) {
 			// Buscar en todos los registros pendientes para coincidencias parciales
 			$sqlBusquedaParcial = "SELECT c.id, c.amount, c.reference, c.date, c.status_id, c.account
