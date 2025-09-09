@@ -11,7 +11,16 @@ document.addEventListener('DOMContentLoaded',function(){
 
 			if(name == "" || username == "" || enterprise == "")
 			{
-				Swal.fire("Por favor", "Todos los campos son obligatorios.", "error");
+				Swal.fire({
+				title: "Por favor",
+				text: "Todos los campos son obligatorios.",
+				icon: "error",
+				background: '#19233adb',
+				color: '#fff',
+				customClass: {
+					popup: 'futuristic-popup'
+				}
+			});
 				return false;
 			}else{
 				var request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
@@ -26,13 +35,40 @@ document.addEventListener('DOMContentLoaded',function(){
 
 						if(objData.status)
 						{   
-                            Swal.fire('Éxito',objData.msg,'success');
+                            Swal.fire({
+						title: 'Éxito',
+						text: objData.msg,
+						icon: 'success',
+						background: '#19233adb',
+						color: '#fff',
+						customClass: {
+							popup: 'futuristic-popup'
+						}
+					});
 							window.location = base_url + "/home";
 						}else{
-							Swal.fire('Atención',objData.msg,'error');
+							Swal.fire({
+						title: 'Atención',
+						text: objData.msg,
+						icon: 'error',
+						background: '#19233adb',
+						color: '#fff',
+						customClass: {
+							popup: 'futuristic-popup'
+						}
+					});
 						}
 					}else{
-						Swal.fire("Atención","Error en el proceso", "error");
+						Swal.fire({
+					title: "Atención",
+					text: "Error en el proceso",
+					icon: "error",
+					background: '#19233adb',
+					color: '#fff',
+					customClass: {
+						popup: 'futuristic-popup'
+					}
+				});
 					}
 					divLoading.style.display = "none";
 					return false;

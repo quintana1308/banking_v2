@@ -6,7 +6,9 @@ $templateConfig = [
     'show_navbar' => true,
     'show_footer' => true,
     'theme' => 'dark',
-    'custom_css' => [],
+    'custom_css' => [
+        'futuristic-dashboard.css'
+    ],
     'custom_js' => [$data['page_functions_js']]
 ];
 
@@ -27,16 +29,48 @@ $pageHeader = [
 ob_start();
 ?>
 
+<!-- Loader -->
+<div class="loader" id="loader">
+    <div class="loader-content">
+        <div class="loader-spinner"></div>
+        <div class="loader-text">Cargando Página...</div>
+    </div>
+</div>
+
+<!-- Fondo animado futurista -->
+<div class="futuristic-background"></div>
+
+<!-- Partículas flotantes -->
+<div class="floating-particles">
+    <?php for($i = 0; $i < 25; $i++): ?>
+        <div class="particle" style="left: <?= rand(0, 100) ?>%; animation-delay: <?= rand(0, 20) ?>s;"></div>
+    <?php endfor; ?>
+</div>
+
+<!-- Líneas geométricas -->
+<div class="geometric-lines">
+    <div class="geometric-line"></div>
+    <div class="geometric-line"></div>
+    <div class="geometric-line"></div>
+</div>
+
 <div class="container-fluid">
     <div class="row g-4">
         <!-- Información del Usuario -->
         <div class="col-lg-4">
             <div class="futuristic-card-compact">
                 <div class="card-header-compact">
-                    <h5 class="card-title-compact">
-                        <i class="fas fa-user me-2"></i>
-                        Información Personal
-                    </h5>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-inline-flex align-items-center">
+                            <div class="icon-container me-3">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div class="text-start">
+                                <h5 class="mb-0 card-title-compact">Información Personal</h5>
+                                <small class="text-muted-futuristic">Datos del usuario y configuración de cuenta</small>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="card-body p-4">
                     <div class="text-center mb-4">
@@ -82,10 +116,17 @@ ob_start();
         <div class="col-lg-8">
             <div class="futuristic-card-compact">
                 <div class="card-header-compact">
-                    <h5 class="card-title-compact">
-                        <i class="fas fa-building me-2"></i>
-                        Gestión de Empresas
-                    </h5>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-inline-flex align-items-center">
+                            <div class="icon-container me-3">
+                                <i class="fas fa-building"></i>
+                            </div>
+                            <div class="text-start">
+                                <h5 class="mb-0 card-title-compact">Gestión de Empresas</h5>
+                                <small class="text-muted-futuristic">Selecciona y administra las empresas asignadas</small>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="card-body p-4">
                     <div class="alert alert-info mb-4" style="background: rgba(13, 202, 240, 0.1); border: 1px solid rgba(13, 202, 240, 0.3);">
@@ -99,9 +140,13 @@ ob_start();
                         <h6 class="mb-3">Cambiar a otra empresa:</h6>
                         <div class="row g-3">
                             <?php foreach($data['userEnterprises'] as $enterprise): ?>
-                            <div class="col-md-6">
+                            <div class="col-md-6 mb-3" <?php if($enterprise['enterprise_id'] == $data['currentEnterprise']): ?>style="order: -1;"<?php endif; ?>>
                                 <div class="enterprise-card <?= $enterprise['enterprise_id'] == $data['currentEnterprise'] ? 'active' : '' ?>" 
-                                     data-enterprise-id="<?= $enterprise['enterprise_id'] ?>">
+                                     data-enterprise-id="<?= $enterprise['enterprise_id'] ?>"
+                                     <?php if($enterprise['enterprise_id'] != $data['currentEnterprise']): ?>
+                                     onclick="changeEnterprise(<?= $enterprise['enterprise_id'] ?>, '<?= $enterprise['enterprise_name'] ?>')"
+                                     style="cursor: pointer;"
+                                     <?php endif; ?>>
                                     <div class="enterprise-icon">
                                         <i class="fas fa-building"></i>
                                     </div>
@@ -112,7 +157,9 @@ ob_start();
                                             <span class="badge bg-success">Actual</span>
                                         <?php else: ?>
                                             <button class="btn btn-sm btn-primary-futuristic change-enterprise-btn" 
-                                                    data-enterprise-id="<?= $enterprise['enterprise_id'] ?>">
+                                                    data-enterprise-id="<?= $enterprise['enterprise_id'] ?>"
+                                                    data-enterprise-name="<?= $enterprise['enterprise_name'] ?>"
+                                                    onclick="changeEnterprise(<?= $enterprise['enterprise_id'] ?>, '<?= $enterprise['enterprise_name'] ?>')">
                                                 <i class="fas fa-exchange-alt me-1"></i>Cambiar
                                             </button>
                                         <?php endif; ?>
@@ -135,10 +182,17 @@ ob_start();
             <!-- Información de la Empresa Actual -->
             <div class="futuristic-card-compact mt-4">
                 <div class="card-header-compact">
-                    <h5 class="card-title-compact">
-                        <i class="fas fa-info-circle me-2"></i>
-                        Detalles de la Empresa Actual
-                    </h5>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-inline-flex align-items-center">
+                            <div class="icon-container me-3">
+                                <i class="fas fa-info-circle"></i>
+                            </div>
+                            <div class="text-start">
+                                <h5 class="mb-0 card-title-compact">Detalles de la Empresa Actual</h5>
+                                <small class="text-muted-futuristic">Información completa de la empresa seleccionada</small>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="card-body p-4">
                     <div class="row g-3">
@@ -153,7 +207,7 @@ ob_start();
                         <div class="col-md-6">
                             <label class="form-label text-secondary">Token de API</label>
                             <div class="info-value">
-                                <code><?= substr($_SESSION['userData']['token'] ?? 'N/A', 0, 8) ?>...</code>
+                                <code><?= $_SESSION['userData']['token'] ?></code>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -169,111 +223,143 @@ ob_start();
     </div>
 </div>
 
-<style>
-.user-avatar-large {
-    width: 80px;
-    height: 80px;
-    background: var(--accent-gradient);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-weight: 700;
-    font-size: 1.8rem;
-    box-shadow: var(--shadow-glow);
-}
 
-.user-info-details .info-item {
-    padding: 0.75rem 0;
-    border-bottom: 1px solid var(--glass-border);
-}
+<script>
+    // Efectos futuristas mejorados
+    document.addEventListener('DOMContentLoaded', function() {
+        // Crear partículas dinámicamente
+        const particlesContainer = document.querySelector('.floating-particles');
+        
+        // Animación de entrada para las tarjetas
+        const cards = document.querySelectorAll('.futuristic-card-compact');
+        cards.forEach((card, index) => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(30px)';
+            
+            setTimeout(() => {
+                card.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0)';
+            }, 200 + (index * 100));
+        });
 
-.user-info-details .info-item:last-child {
-    border-bottom: none;
-}
+        // Ocultar loader después de cargar la página
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                const loader = document.getElementById('loader');
+                if (loader) {
+                    loader.style.opacity = '0';
+                    setTimeout(() => {
+                        loader.style.display = 'none';
+                    }, 500);
+                }
+            }, 1500); // Mostrar loader por 1.5 segundos
+        });
+    });
 
-.info-value {
-    font-weight: 500;
-    color: var(--text-primary);
-    margin-top: 0.25rem;
-}
+    // Función para cambiar de empresa
+    function changeEnterprise(enterpriseId, enterpriseName) {
+        // Prevenir propagación del evento si se hace clic en el botón
+        event.stopPropagation();
+        
+        Swal.fire({
+            title: '¿Cambiar de empresa?',
+            text: `¿Deseas cambiar a la empresa "${enterpriseName}"?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, cambiar',
+            cancelButtonText: 'Cancelar',
+            background: '#19233adb',
+            color: '#fff',
+            customClass: {
+                popup: 'futuristic-popup'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Mostrar loader mientras se procesa
+                const loader = document.getElementById('loader');
+                if (loader) {
+                    loader.style.display = 'flex';
+                    loader.style.opacity = '1';
+                }
+                
+                // Enviar petición para cambiar empresa
+                fetch('<?= base_url() ?>/usuario/cambiarEmpresa', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `enterprise_id=${enterpriseId}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Ocultar loader
+                        if (loader) {
+                            loader.style.opacity = '0';
+                            setTimeout(() => {
+                                loader.style.display = 'none';
+                            }, 500);
+                        }
 
-.enterprise-card {
-    background: var(--glass-bg);
-    border: 1px solid var(--glass-border);
-    border-radius: 12px;
-    padding: 1.5rem;
-    transition: all 0.3s ease;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
-}
-
-.enterprise-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-glow);
-    border-color: var(--accent-color);
-}
-
-.enterprise-card.active {
-    background: rgba(102, 126, 234, 0.1);
-    border-color: var(--accent-color);
-    box-shadow: var(--shadow-glow);
-}
-
-.enterprise-card.active::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: var(--accent-gradient);
-}
-
-.enterprise-icon {
-    width: 50px;
-    height: 50px;
-    background: var(--secondary-gradient);
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 1.2rem;
-    margin-bottom: 1rem;
-}
-
-.enterprise-name {
-    color: var(--text-primary);
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-}
-
-.enterprise-rif {
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-    margin-bottom: 1rem;
-}
-
-.change-enterprise-btn {
-    font-size: 0.85rem;
-    padding: 0.4rem 0.8rem;
-}
-
-@media (max-width: 768px) {
-    .enterprise-card {
-        text-align: center;
+                        Swal.fire({
+                            title: '¡Empresa cambiada!',
+                            text: data.message,
+                            icon: 'success',
+                            background: '#19233adb',
+                            color: '#fff',
+                            customClass: {
+                                popup: 'futuristic-popup'
+                            }
+                        }).then(() => {
+                            // Recargar la página para actualizar la información
+                            window.location.reload();
+                        });
+                    } else {
+                        // Ocultar loader en caso de error
+                        if (loader) {
+                            loader.style.opacity = '0';
+                            setTimeout(() => {
+                                loader.style.display = 'none';
+                            }, 500);
+                        }
+                        
+                        Swal.fire({
+                            title: 'Error',
+                            text: data.message,
+                            icon: 'error',
+                            background: '#19233adb',
+                            color: '#fff',
+                            customClass: {
+                                popup: 'futuristic-popup'
+                            }
+                        });
+                    }
+                })
+                .catch(error => {
+                    // Ocultar loader en caso de error
+                    if (loader) {
+                        loader.style.opacity = '0';
+                        setTimeout(() => {
+                            loader.style.display = 'none';
+                        }, 500);
+                    }
+                    
+                    Swal.fire({
+                        title: 'Error de conexión',
+                        text: 'No se pudo conectar con el servidor',
+                        icon: 'error',
+                        background: '#19233adb',
+                        color: '#fff',
+                        customClass: {
+                            popup: 'futuristic-popup'
+                        }
+                    });
+                });
+            }
+        });
     }
-    
-    .user-avatar-large {
-        width: 60px;
-        height: 60px;
-        font-size: 1.4rem;
-    }
-}
-</style>
+</script>
 
 <?php
 $content = ob_get_clean();

@@ -91,7 +91,16 @@ document.addEventListener('DOMContentLoaded',function(){
 
 			if(name == "" || account == "" || id_bank == "" || id_enterprise == "" || prefix == "")
 			{
-				Swal.fire("Por favor", "Todos los campos son obligatorios.", "error");
+				Swal.fire({
+				title: "Por favor",
+				text: "Todos los campos son obligatorios.",
+				icon: "error",
+				background: '#19233adb',
+				color: '#fff',
+				customClass: {
+					popup: 'futuristic-popup'
+				}
+			});
 				return false;
 			}else{
 				var request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
@@ -106,16 +115,43 @@ document.addEventListener('DOMContentLoaded',function(){
 
 						if(objData.status)
 						{   
-                            Swal.fire('Éxito', objData.message, 'success').then((result) => {
+                            Swal.fire({
+						title: 'Éxito',
+						text: objData.message,
+						icon: 'success',
+						background: '#19233adb',
+						color: '#fff',
+						customClass: {
+							popup: 'futuristic-popup'
+						}
+					}).then((result) => {
                                 if (result.isConfirmed) {
                                     window.location = base_url+'/bank';
                                 }
                             });
 						}else{
-							Swal.fire('Atención',objData.message,'error');
+							Swal.fire({
+						title: 'Atención',
+						text: objData.message,
+						icon: 'error',
+						background: '#19233adb',
+						color: '#fff',
+						customClass: {
+							popup: 'futuristic-popup'
+						}
+					});
 						}
 					}else{
-						Swal.fire("Atención","Error en el proceso", "error");
+						Swal.fire({
+					title: "Atención",
+					text: "Error en el proceso",
+					icon: "error",
+					background: '#19233adb',
+					color: '#fff',
+					customClass: {
+						popup: 'futuristic-popup'
+					}
+				});
 					}
 					divLoading.style.display = "none";
 					return false;
@@ -137,7 +173,16 @@ document.addEventListener('DOMContentLoaded',function(){
 
 			if(name == "" || account == "" || id_bank == "" || id_enterprise == "" || prefix == "")
 			{
-				Swal.fire("Por favor", "Todos los campos son obligatorios.", "error");
+				Swal.fire({
+				title: "Por favor",
+				text: "Todos los campos son obligatorios.",
+				icon: "error",
+				background: '#19233adb',
+				color: '#fff',
+				customClass: {
+					popup: 'futuristic-popup'
+				}
+			});
 				return false;
 			}else{
 				var request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
@@ -152,16 +197,43 @@ document.addEventListener('DOMContentLoaded',function(){
 
 						if(objData.status)
 						{   
-                            Swal.fire('Éxito', objData.message, 'success').then((result) => {
+                            Swal.fire({
+						title: 'Éxito',
+						text: objData.message,
+						icon: 'success',
+						background: '#19233adb',
+						color: '#fff',
+						customClass: {
+							popup: 'futuristic-popup'
+						}
+					}).then((result) => {
                                 if (result.isConfirmed) {
                                     window.location = base_url+'/bank';
                                 }
                             });
 						}else{
-							Swal.fire('Atención',objData.message,'error');
+							Swal.fire({
+						title: 'Atención',
+						text: objData.message,
+						icon: 'error',
+						background: '#19233adb',
+						color: '#fff',
+						customClass: {
+							popup: 'futuristic-popup'
+						}
+					});
 						}
 					}else{
-						Swal.fire("Atención","Error en el proceso", "error");
+						Swal.fire({
+					title: "Atención",
+					text: "Error en el proceso",
+					icon: "error",
+					background: '#19233adb',
+					color: '#fff',
+					customClass: {
+						popup: 'futuristic-popup'
+					}
+				});
 					}
 					divLoading.style.display = "none";
 					return false;
@@ -187,10 +259,14 @@ function confirmDelete(id, status) {
         text: content,
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#3b8aff',
-        cancelButtonColor: '#6c757d',
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
         confirmButtonText: botonText,
-        cancelButtonText: 'Cancelar'
+        background: '#19233adb',
+        color: '#fff',
+        customClass: {
+            popup: 'futuristic-popup'
+        }
     }).then((result) => {
         if (result.isConfirmed) {
             // Aquí haces la petición
@@ -204,17 +280,44 @@ function confirmDelete(id, status) {
             .then(res => res.json())
             .then(data => {
                 if (data.status) {
-                    Swal.fire('Actualizado', data.message, 'success').then((result) => {
+                    Swal.fire({
+                    title: 'Actualizado',
+                    text: data.message,
+                    icon: 'success',
+                    background: '#19233adb',
+                    color: '#fff',
+                    customClass: {
+                        popup: 'futuristic-popup'
+                    }
+                }).then((result) => {
                         if (result.isConfirmed) {
                             $('#bank-list-table').DataTable().ajax.reload(); 
                         }
                     });
                 } else {
-                    Swal.fire('Error', data.message, 'error');
+                    Swal.fire({
+                    title: 'Error',
+                    text: data.message,
+                    icon: 'error',
+                    background: '#19233adb',
+                    color: '#fff',
+                    customClass: {
+                        popup: 'futuristic-popup'
+                    }
+                });
                 }
             })
             .catch(() => {
-                Swal.fire('Error', 'Ocurrió un error en la solicitud.', 'error');
+                Swal.fire({
+                title: 'Error',
+                text: 'Ocurrió un error en la solicitud.',
+                icon: 'error',
+                background: '#19233adb',
+                color: '#fff',
+                customClass: {
+                    popup: 'futuristic-popup'
+                }
+            });
             });
         }
     });

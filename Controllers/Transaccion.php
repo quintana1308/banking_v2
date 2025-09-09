@@ -30,6 +30,7 @@ class Transaccion extends Controllers{
 	{	
 		$data['page_functions_js'] = "functions_transaction.js";
 		$data['accounts'] = $this->model->getAccounts();
+		$data['can_delete_transactions'] = canDeleteTransactions();
 		$this->views->getView($this,"transaccion", $data);
 	}
 
@@ -52,8 +53,49 @@ class Transaccion extends Controllers{
 		
 		$arrData = $this->model->getTransaction($filters);
 		
+		// Agregar información de permisos para cada registro
+		foreach ($arrData as &$row) {
+			$row['can_delete'] = canDeleteTransactions();
+		}
 		
 		echo json_encode(['data' => $arrData], JSON_UNESCAPED_UNICODE);
+		die();
+	}
+
+	/**
+	 * Eliminar una transacción específica
+	 * Method: POST (JSON)
+	 * Body: { id }
+	 */
+	public function deleteTransaction()
+	{
+		if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+			echo json_encode(['status' => false, 'message' => 'Método no permitido.'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		// Verificar permisos de eliminación
+		if (!canDeleteTransactions()) {
+			echo json_encode(['status' => false, 'message' => 'No tienes permisos para eliminar transacciones.'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$postdata = file_get_contents("php://input");
+		$request = json_decode($postdata, true);
+
+		if (!isset($request['id']) || empty($request['id'])) {
+			echo json_encode(['status' => false, 'message' => 'ID de transacción requerido.'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$transactionId = intval($request['id']);
+		$result = $this->model->deleteTransaction($transactionId);
+
+		if ($result) {
+			echo json_encode(['status' => true, 'message' => 'Transacción eliminada exitosamente.'], JSON_UNESCAPED_UNICODE);
+		} else {
+			echo json_encode(['status' => false, 'message' => 'Error al eliminar la transacción.'], JSON_UNESCAPED_UNICODE);
+		}
 		die();
 	}
 	

@@ -86,7 +86,16 @@ document.addEventListener('DOMContentLoaded', function () {
             let delete_mov = document.querySelector('#delete_mov').checked ? 1 : 0;
 
             if (name == "" || username == "" || password == "" || id_rol == "" || id_enterprise == "" || type == "") {
-                Swal.fire("Por favor", "Todos los campos son obligatorios.", "error");
+                Swal.fire({
+                title: "Por favor",
+                text: "Todos los campos son obligatorios.",
+                icon: "error",
+                background: '#19233adb',
+                color: '#fff',
+                customClass: {
+                    popup: 'futuristic-popup'
+                }
+            });
                 return false;
             }
 
@@ -104,17 +113,40 @@ document.addEventListener('DOMContentLoaded', function () {
                         title: "¡Éxito!",
                         text: data.msg,
                         icon: "success",
-                        confirmButtonText: "Aceptar"
+                        timer: 2000,
+                        background: '#19233adb',
+                        color: '#fff',
+                        customClass: {
+                            popup: 'futuristic-popup'
+                        }
                     }).then(() => {
                         window.location.href = base_url + '/usuario/usuarios';
                     });
                 } else {
-                    Swal.fire("Error", data.msg, "error");
+                    Swal.fire({
+                    title: "Error",
+                    text: data.msg,
+                    icon: "error",
+                    background: '#19233adb',
+                    color: '#fff',
+                    customClass: {
+                        popup: 'futuristic-popup'
+                    }
+                });
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                Swal.fire("Error", "Hubo un problema al procesar la solicitud", "error");
+                Swal.fire({
+                title: "Error",
+                text: "Hubo un problema al procesar la solicitud",
+                icon: "error",
+                background: '#19233adb',
+                color: '#fff',
+                customClass: {
+                    popup: 'futuristic-popup'
+                }
+            });
             });
         }
     }
@@ -134,7 +166,16 @@ document.addEventListener('DOMContentLoaded', function () {
             let delete_mov = document.querySelector('#delete_mov').checked ? 1 : 0;
 
             if (id == "" || name == "" || username == "" || id_rol == "" || id_enterprise == "" || type == "") {
-                Swal.fire("Por favor", "Todos los campos son obligatorios.", "error");
+                Swal.fire({
+                title: "Por favor",
+                text: "Todos los campos son obligatorios.",
+                icon: "error",
+                background: '#19233adb',
+                color: '#fff',
+                customClass: {
+                    popup: 'futuristic-popup'
+                }
+            });
                 return false;
             }
 
@@ -152,17 +193,40 @@ document.addEventListener('DOMContentLoaded', function () {
                         title: "¡Éxito!",
                         text: data.msg,
                         icon: "success",
-                        confirmButtonText: "Aceptar"
+                        timer: 2000,
+                        background: '#19233adb',
+                        color: '#fff',
+                        customClass: {
+                            popup: 'futuristic-popup'
+                        }
                     }).then(() => {
                         window.location.href = base_url + '/usuario/usuarios';
                     });
                 } else {
-                    Swal.fire("Error", data.msg, "error");
+                    Swal.fire({
+                    title: "Error",
+                    text: data.msg,
+                    icon: "error",
+                    background: '#19233adb',
+                    color: '#fff',
+                    customClass: {
+                        popup: 'futuristic-popup'
+                    }
+                });
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                Swal.fire("Error", "Hubo un problema al procesar la solicitud", "error");
+                Swal.fire({
+                title: "Error",
+                text: "Hubo un problema al procesar la solicitud",
+                icon: "error",
+                background: '#19233adb',
+                color: '#fff',
+                customClass: {
+                    popup: 'futuristic-popup'
+                }
+            });
             });
         }
     }
@@ -180,10 +244,15 @@ function deleteUsuario(id) {
         text: "Esta acción desactivará el usuario y no podrá acceder al sistema",
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
         confirmButtonText: 'Sí, desactivar',
-        cancelButtonText: 'Cancelar'
+        cancelButtonText: 'Cancelar',
+        background: '#19233adb',
+        color: '#fff',
+        customClass: {
+            popup: 'futuristic-popup'
+        }
     }).then((result) => {
         if (result.isConfirmed) {
             let formData = new FormData();
@@ -200,7 +269,12 @@ function deleteUsuario(id) {
                         title: "¡Desactivado!",
                         text: data.msg,
                         icon: "success",
-                        confirmButtonText: "Aceptar"
+                        confirmButtonText: "Aceptar",
+                        background: '#19233adb',
+                        color: '#fff',
+                        customClass: {
+                            popup: 'futuristic-popup'
+                        }
                     }).then(() => {
                         // Recargar solo el DataTable
                         if (tableUsuarios) {
@@ -208,12 +282,30 @@ function deleteUsuario(id) {
                         }
                     });
                 } else {
-                    Swal.fire("Error", data.msg, "error");
+                    Swal.fire({
+                    title: "Error",
+                    text: data.msg,
+                    icon: "error",
+                    background: '#19233adb',
+                    color: '#fff',
+                    customClass: {
+                        popup: 'futuristic-popup'
+                    }
+                });
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                Swal.fire("Error", "Hubo un problema al procesar la solicitud", "error");
+                Swal.fire({
+                title: "Error",
+                text: "Hubo un problema al procesar la solicitud",
+                icon: "error",
+                background: '#19233adb',
+                color: '#fff',
+                customClass: {
+                    popup: 'futuristic-popup'
+                }
+            });
             });
         }
     });
@@ -226,10 +318,15 @@ function activateUsuario(id) {
         text: "El usuario podrá acceder nuevamente al sistema",
         icon: 'question',
         showCancelButton: true,
-        confirmButtonColor: '#28a745',
-        cancelButtonColor: '#6c757d',
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
         confirmButtonText: 'Sí, activar',
-        cancelButtonText: 'Cancelar'
+        cancelButtonText: 'Cancelar',
+        background: '#19233adb',
+        color: '#fff',
+        customClass: {
+            popup: 'futuristic-popup'
+        }
     }).then((result) => {
         if (result.isConfirmed) {
             let formData = new FormData();
@@ -241,12 +338,18 @@ function activateUsuario(id) {
             })
             .then(response => response.json())
             .then(data => {
+                
                 if (data.status) {
                     Swal.fire({
                         title: "¡Activado!",
                         text: data.msg,
                         icon: "success",
-                        confirmButtonText: "Aceptar"
+                        confirmButtonText: "Aceptar",
+                        background: '#19233adb',
+                        color: '#fff',
+                        customClass: {
+                            popup: 'futuristic-popup'
+                        }
                     }).then(() => {
                         // Recargar solo el DataTable
                         if (tableUsuarios) {
@@ -254,12 +357,30 @@ function activateUsuario(id) {
                         }
                     });
                 } else {
-                    Swal.fire("Error", data.msg, "error");
+                    Swal.fire({
+                    title: "Error",
+                    text: data.msg,
+                    icon: "error",
+                    background: '#19233adb',
+                    color: '#fff',
+                    customClass: {
+                        popup: 'futuristic-popup'
+                    }
+                });
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                Swal.fire("Error", "Hubo un problema al procesar la solicitud", "error");
+                Swal.fire({
+                title: "Error",
+                text: "Hubo un problema al procesar la solicitud",
+                icon: "error",
+                background: '#19233adb',
+                color: '#fff',
+                customClass: {
+                    popup: 'futuristic-popup'
+                }
+            });
             });
         }
     });

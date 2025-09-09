@@ -252,6 +252,9 @@ ob_start();
                                     <th>RESPONSABLE</th>
                                     <th>ASIGNADO</th>
                                     <th>ESTADO</th>
+                                    <?php if($data['can_delete_transactions']): ?>
+                                    <th>ACCIONES</th>
+                                    <?php endif; ?>
                                 </tr>
                             </thead>
                             <tbody>
@@ -267,6 +270,9 @@ ob_start();
 
 
 <script>
+// Variables globales para permisos
+const canDeleteTransactions = <?= $data['can_delete_transactions'] ? 'true' : 'false' ?>;
+
 document.addEventListener('DOMContentLoaded', function() {
     // Focus effects for form controls
     document.querySelectorAll('.form-control-futuristic').forEach(input => {

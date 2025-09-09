@@ -72,8 +72,8 @@
                         <?php } ?>-->
                         <li><hr class="dropdown-divider"></li>
                         <li>
-                            <a class="dropdown-item-futuristic text-danger" href="<?= base_url() ?>/logout" 
-                               onclick="return confirm('¿Está seguro que desea cerrar sesión?')">
+                            <a class="dropdown-item-futuristic text-danger" href="#" 
+                               onclick="confirmLogout(event)">
                                 <i class="fas fa-sign-out-alt me-2"></i>
                                 Cerrar Sesión
                             </a>

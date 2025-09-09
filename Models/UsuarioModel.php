@@ -102,8 +102,8 @@
 
 		// Obtener datos de una empresa específica
 		public function getEnterpriseData($enterpriseId){
-			$sql = "SELECT id, name, rif, token, `table` FROM empresa WHERE id = ?";
-			$request = $this->select($sql, [$enterpriseId]);
+			$sql = "SELECT id, `name`, rif, token, `table` FROM empresa WHERE id = $enterpriseId";
+			$request = $this->select($sql);
 			return $request;
 		}
 

@@ -620,6 +620,16 @@
         .futuristic-table-compact td {
             padding: 0.5rem;
         }
+
+        .enterprise-card {
+            text-align: center;
+        }
+        
+        .user-avatar-large {
+            width: 60px;
+            height: 60px;
+            font-size: 1.4rem;
+        }
     }
 
     .loader-body {
@@ -634,6 +644,99 @@
     @keyframes spin {
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
+    }
+
+    /* Estilos específicos para perfil de usuario */
+    .user-avatar-large {
+        width: 80px;
+        height: 80px;
+        background: var(--accent-gradient);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 700;
+        font-size: 1.8rem;
+        box-shadow: var(--shadow-glow);
+    }
+
+    .user-info-details .info-item {
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--glass-border);
+    }
+
+    .user-info-details .info-item:last-child {
+        border-bottom: none;
+    }
+
+    .info-value {
+        font-weight: 500;
+        color: var(--text-primary);
+        margin-top: 0.25rem;
+    }
+
+    .enterprise-card {
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .enterprise-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-glow);
+        border-color: var(--accent-color);
+    }
+
+    .enterprise-card.active {
+        background: rgba(102, 126, 234, 0.1);
+        border-color: var(--accent-color);
+        box-shadow: var(--shadow-glow);
+    }
+
+    .enterprise-card.active::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: var(--accent-gradient);
+    }
+
+    .enterprise-icon {
+        width: 50px;
+        height: 50px;
+        background: var(--secondary-gradient);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.2rem;
+        margin-bottom: 1rem;
+    }
+
+    .enterprise-name {
+        color: var(--text-primary);
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .enterprise-rif {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+    }
+
+    .change-enterprise-btn {
+        font-size: 0.85rem;
+        padding: 0.4rem 0.8rem;
     }
 
     /* Botones de acción para tablas */
@@ -1305,6 +1408,33 @@
     }
 </style>
 
+<script>
+    // Función global para confirmar logout con SweetAlert
+    function confirmLogout(event) {
+        event.preventDefault();
+        
+        Swal.fire({
+            title: '¿Cerrar sesión?',
+            text: '¿Está seguro que desea cerrar sesión?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, cerrar sesión',
+            cancelButtonText: 'Cancelar',
+            background: '#19233adb',
+            color: '#fff',
+            customClass: {
+                popup: 'futuristic-popup'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = '<?= base_url() ?>/logout';
+            }
+        });
+    }
+</script>
+</head>
 <!-- Meta Tags -->
 <meta name="author" content="ADN Software - Banking ADN">
 <meta name="robots" content="index, follow">

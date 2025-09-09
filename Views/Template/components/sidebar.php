@@ -146,8 +146,7 @@ $currentController = explode('/', trim($currentRoute, '/'))[0] ?? 'home';
 
         <!-- Botón de Cerrar Sesión -->
         <div class="sidebar-footer">
-            <a href="<?= base_url() ?>/logout" class="logout-btn" 
-               onclick="return confirm('¿Está seguro que desea cerrar sesión?')">
+            <a href="#" class="logout-btn" onclick="confirmLogout(event)">
                 <i class="fas fa-sign-out-alt me-2"></i>
                 Cerrar Sesión
             </a>

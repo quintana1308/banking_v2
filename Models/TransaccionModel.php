@@ -632,6 +632,39 @@
 		return $this->select_all($sql);
 	}
 
+	/**
+	 * Eliminar una transacción específica
+	 */
+	public function deleteTransaction($transactionId)
+	{
+		$id_enterprise = $_SESSION['userData']['id_enterprise'];
+
+		$sqlTable = "SELECT * FROM empresa WHERE id = $id_enterprise";
+		$requestEnterprise = $this->select($sqlTable);
+
+		if (empty($requestEnterprise)) {
+			return false;
+		}
+
+		$table = $requestEnterprise['table'];
+
+		// Verificar que la transacción existe y pertenece a un banco de la empresa
+		$sqlCheck = "SELECT t.id FROM $table t 
+					INNER JOIN banco b ON b.id_bank = t.bank 
+					WHERE t.id = $transactionId AND b.id_enterprise = $id_enterprise";
+		$exists = $this->select($sqlCheck);
+
+		if (empty($exists)) {
+			return false; // La transacción no existe o no pertenece a la empresa
+		}
+
+		// Eliminar la transacción
+		$sql = "DELETE FROM $table WHERE id = $transactionId";
+		$request = $this->delete($sql);
+		
+		return $request;
+	}
+
 		// ============================================
 		// FUNCIONES PRIVADAS DE CONCILIACIÓN
 		// ============================================

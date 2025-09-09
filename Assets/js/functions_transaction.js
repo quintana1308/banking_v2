@@ -9,6 +9,11 @@ document.addEventListener('DOMContentLoaded', function () {
         hiddenColumns = []; 
     }
 
+    // Agregar columna de eliminar (índice 9) a columnas ocultas si el usuario no tiene permisos
+    if (typeof canDeleteTransactions !== 'undefined' && !canDeleteTransactions) {
+        hiddenColumns.push(9); // Columna de acciones/eliminar
+    }
+
     tableTransaction = $('#transaction-list-table').DataTable({
         "aProcessing": true,
         "aServerSide": true,
@@ -134,7 +139,22 @@ document.addEventListener('DOMContentLoaded', function () {
                     
                     return `<i class="${icon} ${colorClass}" title="${data}"></i> <span class="ms-1">${data}</span>`;
                 }
-            } // 8
+            }, // 8
+            {
+                data: null,
+                orderable: false,
+                searchable: false,
+                render: function (data, type, row) {
+                    if (row.can_delete) {
+                        return `<button class="btn btn-danger btn-sm btn-delete" data-id="${row.id}" title="Eliminar transacción">
+                                    <i class="fas fa-trash"></i>
+                                </button>`;
+                    } else {
+                        return '<span class="text-muted">-</span>';
+                    }
+                },
+                className: 'text-center'
+            } // 9
         ],
         columnDefs: [
             { targets: hiddenColumns, visible: false }, // Ocultar bank, account
@@ -301,7 +321,16 @@ document.addEventListener('DOMContentLoaded', function () {
             let strArchive = document.querySelector('#archive').value;
 
             if (strAnio == "" || strMes == "" || strBanco == "" || strArchive == "") {
-                Swal.fire("Por favor", "Todos los campos son obligatorios.", "error");
+                Swal.fire({
+                    title: "Por favor",
+                    text: "Todos los campos son obligatorios.",
+                    icon: "error",
+                    background: '#19233adb',
+                    color: '#fff',
+                    customClass: {
+                        popup: 'futuristic-popup'
+                    }
+                });
                 return false;
             } else {
 
@@ -367,7 +396,12 @@ document.addEventListener('DOMContentLoaded', function () {
                             title: 'Éxito',
                             text: message,
                             icon: 'success',
-                            confirmButtonText: 'Ver Movimientos'
+                            timer: 2000,
+                            background: '#19233adb',
+                            color: '#fff',
+                            customClass: {
+                                popup: 'futuristic-popup'
+                            }
                         }).then(() => {
                             window.location = base_url + '/transaccion';
                         });
@@ -433,15 +467,41 @@ document.addEventListener('DOMContentLoaded', function () {
                             content += 'Coincidieron: ' + objData.msg.parciales + '.<br>';
                             content += 'No consolidados: ' + objData.msg.sin_coincidencia + '.';
 
-                            Swal.fire('Completado', content, 'success').then(() => {
+                            Swal.fire({
+                                title: 'Completado',
+                                html: content,
+                                icon: 'success',
+                                background: '#19233adb',
+                                color: '#fff',
+                                customClass: {
+                                    popup: 'futuristic-popup'
+                                }
+                            }).then(() => {
                                 window.location = base_url + '/transaccion';
                             });
                         } else {
-                            Swal.fire('Atención', objData.msg, 'error');
-                            //console.log(objData.msg);
+                            Swal.fire({
+                                title: 'Atención',
+                                text: objData.msg,
+                                icon: 'error',
+                                background: '#19233adb',
+                                color: '#fff',
+                                customClass: {
+                                    popup: 'futuristic-popup'
+                                }
+                            });
                         }
                     } else {
-                        Swal.fire("Atención", "El chequeo no se realizo de manera correcta", "warning");
+                        Swal.fire({
+                            title: "Atención",
+                            text: "El archivo no se procesó de manera correcta",
+                            icon: "warning",
+                            background: '#19233adb',
+                            color: '#fff',
+                            customClass: {
+                                popup: 'futuristic-popup'
+                            }
+                        });
                     }
                     divLoading.style.display = "none";
                     return false;
@@ -486,6 +546,110 @@ document.addEventListener('DOMContentLoaded', function () {
                 console.error("Error en fetch:", error);
                 Swal.fire('Error', 'Error en la solicitud: ' + error.message, 'error');
             });
+    });
+
+    // Event listener para el botón de eliminar transacciones
+    $('#transaction-list-table tbody').on('click', '.btn-delete', function () {
+        const id = $(this).data('id');
+        const row = $(this).closest('tr');
+        const rowData = tableTransaction.row(row).data();
+
+        Swal.fire({
+            title: '¿Eliminar transacción?',
+            html: `
+                <div class="text-start">
+                    <p><strong>Banco:</strong> ${rowData.bank}</p>
+                    <p><strong>Cuenta:</strong> ${rowData.account}</p>
+                    <p><strong>Referencia:</strong> ${rowData.reference}</p>
+                    <p><strong>Monto:</strong> ${rowData.amount}</p>
+                </div>
+                <div class="alert alert-warning mt-3">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Esta acción no se puede deshacer
+                </div>
+            `,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+            background: '#19233adb',
+            color: '#fff',
+            customClass: {
+                popup: 'futuristic-popup'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Mostrar loader en el botón
+                const btnDelete = $(this);
+                const originalHTML = btnDelete.html();
+                btnDelete.html('<i class="fas fa-spinner fa-spin"></i>').prop('disabled', true);
+
+                fetch(base_url + '/transaccion/deleteTransaction', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ id: id })
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error("Error HTTP: " + response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.status) {
+                        Swal.fire({
+                            title: '¡Eliminado!',
+                            text: data.message,
+                            icon: 'success',
+                            timer: 2000,
+                            timerProgressBar: true,
+                            showConfirmButton: false,
+                            background: 'var(--glass-bg)',
+                            color: 'var(--text-primary)',
+                            customClass: {
+                                popup: 'futuristic-popup'
+                            }
+                        });
+
+                        // Recargar la tabla
+                        tableTransaction.ajax.reload(null, false);
+                    } else {
+                        Swal.fire({
+                            title: 'Error',
+                            text: data.message,
+                            icon: 'error',
+                            background: 'var(--glass-bg)',
+                            color: 'var(--text-primary)',
+                            customClass: {
+                                popup: 'futuristic-popup'
+                            }
+                        });
+                        
+                        // Restaurar el botón
+                        btnDelete.html(originalHTML).prop('disabled', false);
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error en fetch:", error);
+                    Swal.fire({
+                        title: 'Error',
+                        text: 'Error en la solicitud: ' + error.message,
+                        icon: 'error',
+                        background: 'var(--glass-bg)',
+                        color: 'var(--text-primary)',
+                        customClass: {
+                            popup: 'futuristic-popup'
+                        }
+                    });
+                    
+                    // Restaurar el botón
+                    btnDelete.html(originalHTML).prop('disabled', false);
+                });
+            }
+        });
     });
 
 }, false);
