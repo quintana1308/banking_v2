@@ -306,9 +306,20 @@ document.addEventListener('DOMContentLoaded', function () {
             } else {
 
                 try {
-                    // Mostrar loader
-                    //let divLoading = document.querySelector("#loading-content");
-                    //divLoading.classList.remove('d-none');
+                    // Mostrar overlay de carga con progreso
+                    const loadingOverlay = document.querySelector("#loading-overlay");
+                    const loaderText = loadingOverlay.querySelector('.loader-text');
+                    const progressFill = document.querySelector('#progressFill');
+                    const progressText = document.querySelector('#progressText');
+                    
+                    loadingOverlay.classList.remove('d-none');
+                    loaderText.textContent = 'Subiendo archivo...';
+                    
+                    // Simular progreso de subida
+                    if (progressFill && progressText) {
+                        progressFill.style.width = '30%';
+                        progressText.textContent = 'Validando archivo...';
+                    }
 
                     let formData = new FormData(formNewTransaction);
 
@@ -321,10 +332,43 @@ document.addEventListener('DOMContentLoaded', function () {
                         throw new Error("Error HTTP: " + response.status);
                     }
 
+                    // Cambiar mensaje y progreso durante el procesamiento
+                    loaderText.textContent = 'Procesando movimientos...';
+                    if (progressFill && progressText) {
+                        progressFill.style.width = '70%';
+                        progressText.textContent = 'Insertando registros...';
+                    }
+                    
                     const objData = await response.json();
+                    
+                    // Completar progreso
+                    if (progressFill && progressText) {
+                        progressFill.style.width = '100%';
+                        progressText.textContent = 'Completado';
+                    }
+
+                    // Ocultar overlay de carga
+                    loadingOverlay.classList.add('d-none');
 
                     if (objData.status) {
-                        Swal.fire('Éxito', objData.msg, 'success').then(() => {
+                        // Mostrar resultado detallado si está disponible
+                        let message = objData.msg;
+                        if (objData.data && objData.data.processed) {
+                            message += `\n\nMovimientos procesados: ${objData.data.processed}`;
+                            if (objData.data.inserted) {
+                                message += `\nMovimientos insertados: ${objData.data.inserted}`;
+                            }
+                            if (objData.data.duplicated) {
+                                message += `\nMovimientos duplicados: ${objData.data.duplicated}`;
+                            }
+                        }
+                        
+                        Swal.fire({
+                            title: 'Éxito',
+                            text: message,
+                            icon: 'success',
+                            confirmButtonText: 'Ver Movimientos'
+                        }).then(() => {
                             window.location = base_url + '/transaccion';
                         });
                     } else {
@@ -332,16 +376,20 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
 
                 } catch (error) {
+                    // Ocultar overlay de carga en caso de error
+                    const loadingOverlay = document.querySelector("#loading-overlay");
+                    if (loadingOverlay) {
+                        loadingOverlay.classList.add('d-none');
+                    }
+                    
                     Swal.fire({
                         title: 'Error',
                         text: 'Error en la solicitud: ' + error.message,
                         icon: 'error',
-                        timer: 1000,
+                        timer: 3000,
                         timerProgressBar: true,
-                        showConfirmButton: false
+                        showConfirmButton: true
                     });
-                } finally {
-                    //document.querySelector("#loading-content").classList.add('d-none');
                 }
 
             }

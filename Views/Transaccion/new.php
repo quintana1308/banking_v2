@@ -56,13 +56,17 @@ ob_start();
     <div class="geometric-line"></div>
 </div>
 
-<!-- Overlay de carga -->
+<!-- Overlay de carga mejorado -->
 <div id="loading-overlay" class="loading-overlay d-none">
     <div class="futuristic-loader">
         <div class="loader-ring"></div>
-        <div class="loader-ring"></div>
-        <div class="loader-ring"></div>
         <div class="loader-text">Procesando archivo...</div>
+        <div class="loader-progress mt-3">
+            <div class="progress-bar-futuristic">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-text mt-2" id="progressText">Preparando...</div>
+        </div>
     </div>
 </div>
 
@@ -74,17 +78,18 @@ ob_start();
             <div class="futuristic-card-compact glass-effect scale-in">
                 <div class="card-header-compact">
                     <div class="d-flex align-items-center justify-content-between">
-                        <div class="d-flex align-items-center">
+                        <div class="d-inline-flex align-items-center">
                             <div class="icon-container me-3">
                                 <i class="fas fa-cloud-upload-alt"></i>
                             </div>
-                            <div>
+                            <div class="text-start">
                                 <h5 class="mb-0 card-title-compact">Subir Archivo de Movimientos</h5>
-                                <small class="text-muted">Selecciona el período y banco para cargar los movimientos</small>
+                                <small class="text-muted-futuristic">Selecciona el período y banco para cargar los movimientos</small>
                             </div>
                         </div>
-                        <div class="header-actions">
-                            <a href="<?= base_url() ?>/transaccion" class="btn-back-header">
+                        <div class="d-flex align-items-center gap-3">
+                            <a href="<?= base_url() ?>/transaccion" class="btn-secondary-futuristic text-decoration-none">
+                                <span class="btn-glow"></span>
                                 <i class="fas fa-arrow-left me-2"></i>
                                 Volver al Listado
                             </a>
@@ -264,512 +269,6 @@ ob_start();
     </div>
 </div>
 
-<style>
-/* Estilos específicos para la vista de subir movimientos */
-.futuristic-card-compact {
-    background: linear-gradient(135deg, 
-        rgba(15, 23, 42, 0.95) 0%, 
-        rgba(30, 41, 59, 0.9) 100%);
-    backdrop-filter: blur(20px);
-    border: 1px solid var(--glass-border, rgba(102, 126, 234, 0.2));
-    border-radius: 16px;
-    overflow: hidden;
-    transition: all 0.3s ease;
-}
-
-.futuristic-card-compact:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 30px rgba(102, 126, 234, 0.15);
-}
-
-.card-header-compact {
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid var(--glass-border, rgba(102, 126, 234, 0.2));
-    background: rgba(102, 126, 234, 0.05);
-}
-
-.header-actions {
-    display: flex;
-    align-items: center;
-}
-
-.btn-back-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border: none;
-    color: white;
-    padding: 8px 16px;
-    border-radius: 20px;
-    font-weight: 500;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    font-size: 0.85rem;
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
-}
-
-.btn-back-header:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-    color: white;
-    text-decoration: none;
-}
-
-.card-title-compact {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--text-gradient, #667eea);
-    margin: 0;
-    display: flex;
-    align-items: center;
-}
-
-.icon-container {
-    width: 50px;
-    height: 50px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 15px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 1.2rem;
-}
-
-.form-group-futuristic {
-    margin-bottom: 1.5rem;
-}
-
-.form-label-futuristic {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 600;
-    color: #e0e6ed;
-    font-size: 0.9rem;
-}
-
-.input-container {
-    position: relative;
-}
-
-.form-control-futuristic {
-    width: 100%;
-    padding: 12px 16px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    border-radius: 12px;
-    font-size: 0.95rem;
-    color: #e0e6ed;
-    transition: all 0.3s ease;
-    backdrop-filter: blur(10px);
-}
-
-.form-control-futuristic option {
-    background: #2c3e50;
-    color: #e0e6ed;
-    padding: 8px;
-}
-
-.form-control-futuristic:focus {
-    outline: none;
-    border-color: #667eea;
-    background: rgba(255, 255, 255, 0.15);
-    color: #e0e6ed;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.input-border {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 0;
-    height: 2px;
-    background: linear-gradient(90deg, #667eea, #764ba2);
-    transition: width 0.3s ease;
-}
-
-.form-control-futuristic:focus + .input-border {
-    width: 100%;
-}
-
-.file-upload-container {
-    margin-top: 0.5rem;
-}
-
-.file-drop-zone {
-    border: 2px dashed rgba(102, 126, 234, 0.3);
-    border-radius: 15px;
-    padding: 2rem;
-    text-align: center;
-    background: rgba(255, 255, 255, 0.05);
-    transition: all 0.3s ease;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
-}
-
-.file-drop-zone:hover {
-    border-color: #667eea;
-    background: rgba(102, 126, 234, 0.05);
-    transform: translateY(-2px);
-}
-
-.file-drop-zone.dragover {
-    border-color: #667eea;
-    background: rgba(102, 126, 234, 0.1);
-    transform: scale(1.02);
-}
-
-.file-upload-icon {
-    font-size: 2.5rem;
-    color: #667eea;
-    margin-bottom: 1rem;
-}
-
-.file-upload-title {
-    color: #e0e6ed;
-    margin-bottom: 0.5rem;
-    font-weight: 600;
-}
-
-.file-upload-subtitle {
-    color: #b8c5d1;
-    margin-bottom: 1rem;
-    font-size: 0.9rem;
-}
-
-.file-upload-formats {
-    font-size: 0.8rem;
-    color: #8a9ba8;
-}
-
-.file-input-hidden {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    opacity: 0;
-    cursor: pointer;
-}
-
-.file-preview {
-    margin-top: 1rem;
-    padding: 1rem;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.file-info {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-
-.file-icon {
-    font-size: 2rem;
-    color: #28a745;
-}
-
-.file-details {
-    flex: 1;
-}
-
-.file-name {
-    font-weight: 600;
-    color: #e0e6ed;
-}
-
-.file-size {
-    font-size: 0.85rem;
-    color: #b8c5d1;
-}
-
-.btn-remove-file {
-    background: none;
-    border: none;
-    color: #dc3545;
-    font-size: 1.2rem;
-    cursor: pointer;
-    padding: 0.5rem;
-    border-radius: 50%;
-    transition: all 0.3s ease;
-}
-
-.btn-remove-file:hover {
-    background: rgba(220, 53, 69, 0.1);
-    transform: scale(1.1);
-}
-
-.form-actions {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    padding-top: 1.5rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.btn-primary-futuristic {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border: none;
-    color: white;
-    padding: 12px 24px;
-    border-radius: 25px;
-    font-weight: 600;
-    position: relative;
-    overflow: hidden;
-    transition: all 0.3s ease;
-    cursor: pointer;
-}
-
-.btn-primary-futuristic:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
-}
-
-.btn-secondary-futuristic {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: #e0e6ed;
-    padding: 12px 24px;
-    border-radius: 25px;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    cursor: pointer;
-}
-
-.btn-secondary-futuristic:hover {
-    background: rgba(255, 255, 255, 0.2);
-    transform: translateY(-1px);
-}
-
-.btn-glow {
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.5s ease;
-}
-
-.btn-primary-futuristic:hover .btn-glow {
-    left: 100%;
-}
-
-.invalid-feedback-futuristic {
-    color: #dc3545;
-    font-size: 0.85rem;
-    margin-top: 0.5rem;
-    display: flex;
-    align-items: center;
-}
-
-.info-card-compact {
-    background: linear-gradient(135deg, 
-        rgba(15, 23, 42, 0.95) 0%, 
-        rgba(30, 41, 59, 0.9) 100%);
-    backdrop-filter: blur(20px);
-    border: 1px solid var(--glass-border, rgba(102, 126, 234, 0.2));
-    border-radius: 16px;
-    padding: 1.5rem;
-    text-align: center;
-    transition: all 0.3s ease;
-    height: 100%;
-}
-
-.info-card-compact:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 30px rgba(102, 126, 234, 0.15);
-}
-
-.info-icon {
-    width: 50px;
-    height: 50px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 1rem;
-    color: white;
-    font-size: 1.2rem;
-}
-
-.info-content h6 {
-    color: #e0e6ed;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-}
-
-.info-content p {
-    color: #b8c5d1;
-    font-size: 0.9rem;
-    margin: 0;
-}
-
-/* Animaciones y efectos */
-.scale-in {
-    animation: scaleIn 0.5s ease-out forwards;
-    opacity: 0;
-}
-
-@keyframes scaleIn {
-    from {
-        opacity: 0;
-        transform: scale(0.9);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
-/* Fondo animado */
-.animated-background {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: -1;
-    overflow: hidden;
-}
-
-.particle {
-    position: absolute;
-    width: 4px;
-    height: 4px;
-    background: linear-gradient(45deg, #667eea, #764ba2);
-    border-radius: 50%;
-    animation: float var(--duration) infinite linear;
-    animation-delay: var(--delay);
-}
-
-.particle:nth-child(1) { top: 20%; left: 10%; }
-.particle:nth-child(2) { top: 60%; left: 80%; }
-.particle:nth-child(3) { top: 80%; left: 20%; }
-.particle:nth-child(4) { top: 30%; left: 70%; }
-.particle:nth-child(5) { top: 70%; left: 50%; }
-
-@keyframes float {
-    0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0.7; }
-    50% { transform: translateY(-20px) rotate(180deg); opacity: 1; }
-}
-
-.geometric-line {
-    position: absolute;
-    width: 1px;
-    height: 100px;
-    background: linear-gradient(to bottom, transparent, #667eea, transparent);
-    animation: slide var(--duration) infinite linear;
-    animation-delay: var(--delay);
-}
-
-.geometric-line:nth-child(6) { top: 10%; left: 30%; }
-.geometric-line:nth-child(7) { top: 40%; left: 60%; }
-.geometric-line:nth-child(8) { top: 70%; left: 90%; }
-
-@keyframes slide {
-    0% { transform: translateX(-50px) rotate(45deg); opacity: 0; }
-    50% { opacity: 0.5; }
-    100% { transform: translateX(50px) rotate(45deg); opacity: 0; }
-}
-
-/* Overlay de carga */
-.loading-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(10px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-}
-
-.futuristic-loader {
-    text-align: center;
-}
-
-.loader-ring {
-    display: inline-block;
-    width: 40px;
-    height: 40px;
-    border: 3px solid rgba(102, 126, 234, 0.3);
-    border-radius: 50%;
-    border-top-color: #667eea;
-    animation: spin 1s ease-in-out infinite;
-    margin: 0 5px;
-}
-
-.loader-ring:nth-child(2) {
-    animation-delay: -0.3s;
-}
-
-.loader-ring:nth-child(3) {
-    animation-delay: -0.6s;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-.loader-text {
-    color: white;
-    margin-top: 1rem;
-    font-weight: 600;
-}
-
-.text-gradient {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.glass-effect {
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-}
-
-/* Responsive Design para el botón de regresar */
-@media (max-width: 768px) {
-    .card-header-compact {
-        padding: 1rem;
-    }
-    
-    .card-header-compact .d-flex {
-        flex-direction: column;
-        align-items: flex-start !important;
-        gap: 1rem;
-    }
-    
-    .header-actions {
-        width: 100%;
-        justify-content: center;
-    }
-    
-    .btn-back-header {
-        padding: 10px 20px;
-        font-size: 0.9rem;
-        width: auto;
-    }
-}
-
-@media (max-width: 576px) {
-    .btn-back-header {
-        font-size: 0.85rem;
-        padding: 8px 16px;
-    }
-}
-</style>
-
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const fileDropZone = document.getElementById('fileDropZone');
@@ -924,49 +423,43 @@ function resetForm() {
         error.classList.add('d-none');
     });
 }
+
+// Estilos adicionales para la barra de progreso
+const progressStyles = `
+    .progress-bar-futuristic {
+        width: 200px;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+        overflow: hidden;
+        margin: 0 auto;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        width: 0%;
+        transition: width 0.3s ease;
+        border-radius: 3px;
+    }
+
+    .progress-text {
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 0.9rem;
+        text-align: center;
+    }
+
+    .loader-progress {
+        text-align: center;
+    }
+`;
+
+// Agregar estilos al head
+const styleSheet = document.createElement('style');
+styleSheet.textContent = progressStyles;
+document.head.appendChild(styleSheet);
 </script>
 
-<style>
-/* Loader */
-.loader {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-    transition: opacity 0.5s ease;
-}
-
-.loader-content {
-    text-align: center;
-}
-
-.loader-spinner {
-    width: 60px;
-    height: 60px;
-    border: 3px solid rgba(255, 255, 255, 0.1);
-    border-top: 3px solid #667eea;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 20px;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-.loader-text {
-    color: #ffffff;
-    font-size: 18px;
-    font-weight: 500;
-}
-</style>
 
 <script src="<?= media() ?>/js/<?= $data["page_functions_js"]?>"></script>
 <?php

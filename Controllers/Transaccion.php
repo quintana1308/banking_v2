@@ -1512,9 +1512,6 @@ class Transaccion extends Controllers{
 				$totalMovimientos++;
 			}
 
-			dep($movimientos_transformados);
-			exit;
-
 			return [
 				'total' => $totalMovimientos,
 				'mov' => $movimientos_transformados
@@ -1815,9 +1812,6 @@ class Transaccion extends Controllers{
 			$spreadsheet = IOFactory::load($filePath);
 			$sheet = $spreadsheet->getActiveSheet();
 			$rows = $sheet->toArray();
-			
-			dep($rows);
-			exit;
 			
 			$movimientos_transformados = [];
 			$totalMovimientos = 0;

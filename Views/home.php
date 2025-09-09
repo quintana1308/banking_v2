@@ -119,7 +119,6 @@ ob_start();
                     <table class="futuristic-table-compact">
                         <thead>
                             <tr>
-                                <th>ID</th>
                                 <th>Banco</th>
                                 <th>Cuenta</th>
                                 <th>Referencia</th>
@@ -137,7 +136,6 @@ ob_start();
                                 $statusText = $value['amount'] > 0 ? 'Ingreso' : 'Egreso';
                                 ?>
                             <tr>
-                                <td><span class="text-gradient">#<?= str_pad($value['id'], 4, '0', STR_PAD_LEFT); ?></span></td>
                                 <td><?= $value['bank']; ?></td>
                                 <td><?= $value['account']; ?></td>
                                 <td><?= $value['reference']; ?></td>
@@ -220,7 +218,7 @@ ob_start();
                             <tr>
                                 <td><span class="text-gradient">#<?= str_pad($value['id'], 3, '0', STR_PAD_LEFT); ?></span></td>
                                 <td><?= $value['name']; ?></td>
-                                <td><?= substr($value['account'], -4); ?>****</td>
+                                <td>****<?= substr($value['account'], -4); ?></td>
                                 <td class="status-active">Activa</td>
                             </tr>
                             <?php } ?>
@@ -233,214 +231,6 @@ ob_start();
     <?php } ?>
 </div>
 
-<style>
-/* Estilos para tarjetas compactas */
-.metric-card-compact {
-    background: linear-gradient(135deg, 
-        rgba(15, 23, 42, 0.9) 0%, 
-        rgba(30, 41, 59, 0.8) 100%);
-    backdrop-filter: blur(20px);
-    border: 1px solid var(--glass-border, rgba(102, 126, 234, 0.2));
-    border-radius: 12px;
-    padding: 1rem;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    transition: all 0.3s ease;
-    height: 80px;
-}
-
-.metric-card-compact:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.2);
-    border-color: rgba(102, 126, 234, 0.4);
-}
-
-.metric-icon-compact {
-    width: 40px;
-    height: 40px;
-    border-radius: 8px;
-    background: linear-gradient(135deg, var(--primary-gradient, #667eea), var(--secondary-gradient, #764ba2));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.2rem;
-    color: white;
-    flex-shrink: 0;
-}
-
-.metric-content-compact {
-    flex: 1;
-}
-
-.metric-number-compact {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--text-gradient, #667eea);
-    line-height: 1;
-    margin-bottom: 0.25rem;
-}
-
-.metric-label-compact {
-    font-size: 0.875rem;
-    color: rgba(255, 255, 255, 0.7);
-    font-weight: 500;
-}
-
-/* Tarjetas de contenido compactas */
-.futuristic-card-compact {
-    background: linear-gradient(135deg, 
-        rgba(15, 23, 42, 0.95) 0%, 
-        rgba(30, 41, 59, 0.9) 100%);
-    backdrop-filter: blur(20px);
-    border: 1px solid var(--glass-border, rgba(102, 126, 234, 0.2));
-    border-radius: 16px;
-    overflow: hidden;
-    transition: all 0.3s ease;
-}
-
-.futuristic-card-compact:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 30px rgba(102, 126, 234, 0.15);
-}
-
-.card-header-compact {
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid var(--glass-border, rgba(102, 126, 234, 0.2));
-    background: rgba(102, 126, 234, 0.05);
-}
-
-.card-title-compact {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--text-gradient, #667eea);
-    margin: 0;
-    display: flex;
-    align-items: center;
-}
-
-.table-container-compact {
-    padding: 0;
-    max-height: 400px;
-    overflow-y: auto;
-}
-
-.futuristic-table-compact {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.875rem;
-}
-
-.futuristic-table-compact th {
-    background: rgba(102, 126, 234, 0.1);
-    color: rgba(255, 255, 255, 0.9);
-    font-weight: 600;
-    padding: 0.75rem;
-    text-align: left;
-    border-bottom: 1px solid var(--glass-border, rgba(102, 126, 234, 0.2));
-    font-size: 0.8rem;
-}
-
-.futuristic-table-compact td {
-    padding: 0.75rem;
-    border-bottom: 1px solid rgba(102, 126, 234, 0.1);
-    color: rgba(255, 255, 255, 0.8);
-    transition: all 0.3s ease;
-}
-
-.futuristic-table-compact tbody tr:hover {
-    background: rgba(102, 126, 234, 0.08);
-}
-
-.futuristic-table-compact .text-gradient {
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    background-clip: text;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    font-weight: 600;
-}
-
-.futuristic-table-compact .amount-positive {
-    color: #00ff88;
-    font-weight: 600;
-}
-
-.futuristic-table-compact .amount-negative {
-    color: #ff6b6b;
-    font-weight: 600;
-}
-
-.futuristic-table-compact .status-active {
-    color: #00ff88;
-    font-weight: 500;
-}
-
-.futuristic-table-compact .status-pending {
-    color: #ffa502;
-    font-weight: 500;
-}
-
-/* Loader */
-.loader {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-    transition: opacity 0.5s ease;
-}
-
-.loader-content {
-    text-align: center;
-}
-
-.loader-spinner {
-    width: 60px;
-    height: 60px;
-    border: 3px solid rgba(255, 255, 255, 0.1);
-    border-top: 3px solid #667eea;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 20px;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-.loader-text {
-    color: #ffffff;
-    font-size: 18px;
-    font-weight: 500;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .metric-card-compact {
-        height: auto;
-        padding: 0.75rem;
-    }
-    
-    .metric-number-compact {
-        font-size: 1.25rem;
-    }
-    
-    .futuristic-table-compact {
-        font-size: 0.75rem;
-    }
-    
-    .futuristic-table-compact th,
-    .futuristic-table-compact td {
-        padding: 0.5rem;
-    }
-}
-</style>
 
 <script>
     // Efectos futuristas mejorados

@@ -15,7 +15,7 @@ $currentController = explode('/', trim($currentRoute, '/'))[0] ?? 'home';
 <aside class="futuristic-sidebar glass-effect" id="sidebar">
     <!-- Header del Sidebar -->
     <div class="sidebar-header">
-        <div class="sidebar-brand">
+        <a href="<?= base_url() ?>/" class="sidebar-brand text-decoration-none">
             <div class="brand-icon">
                 <i class="fas fa-dna"></i>
             </div>
@@ -23,7 +23,7 @@ $currentController = explode('/', trim($currentRoute, '/'))[0] ?? 'home';
                 <h4 class="brand-title text-gradient">BANKING ADN</h4>
                 <p class="brand-subtitle">Sistema Bancario</p>
             </div>
-        </div>
+        </a>
         <button class="sidebar-close-btn d-lg-none" id="sidebarClose">
             <i class="fas fa-times"></i>
         </button>

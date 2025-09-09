@@ -1,17 +1,22 @@
 <?php
+/**
+ * Vista de Gestión de Usuario - Banking ADN
+ * Actualizada para usar el template principal del sistema
+ */
 
-$botonVisualizar = 1;
-$url_base = base_url();
-$title = "Banking ADN";  // Si deseas un título específico para esta vista
-$titleHeader = "Gestionar Usuario";
-//$descriptionHeader = "We are on a mission to help developers like you build successful projects for FREE.";
-$urlHeader = base_url()."/transaccion";
-$buttonHeader = "Lista de movimientos";
-ob_start(); // Inicia el almacenamiento en búfer para capturar el contenido
+// Configuración del template
+$templateConfig = [
+    'title' => 'Gestionar Usuario - Banking ADN',
+    'description' => 'Gestión y edición de información de usuario en el sistema bancario',
+    'showSidebar' => true,
+    'showNavbar' => true,
+    'showFooter' => true,
+    'customCSS' => [],
+    'customJS' => [media() . '/js/' . $data["page_functions_js"]]
+];
 
-// El contenido específico de la vista home.php
-
-
+// Contenido de la vista
+ob_start();
 ?>
 
 <div class="conatiner-fluid content-inner mt-n5 py-0">
@@ -81,12 +86,9 @@ ob_start(); // Inicia el almacenamiento en búfer para capturar el contenido
     </div>
 </div>
 
-<script src="<?= media() ?>/js/<?= $data["page_functions_js"]?>"></script>
 <?php
+$content = ob_get_clean();
 
-$content = ob_get_clean();  // Captura todo el contenido generado por la vista
-
-
-// Incluye el layout principal (app.php) que contiene el <div class="container">
-include dirname(__DIR__) . '/layouts/app.php';
+// Incluir el template principal del sistema
+include __DIR__ . '/../Template/template.php';
 ?>
