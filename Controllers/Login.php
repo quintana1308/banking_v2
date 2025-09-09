@@ -36,6 +36,7 @@ class Login extends Controllers{
 					$arrResponse = array('status' => false, 'msg' => 'El usuario o la contraseña es incorrecto.' ); 
 				}else{
 					$arrData = $requestUser;
+
 					if($arrData['status'] == 1){
 						$_SESSION['idUser'] = $arrData['id'];
 						$_SESSION['typeUser'] = $arrData['type'];

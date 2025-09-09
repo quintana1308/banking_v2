@@ -65,6 +65,18 @@
 						break;
 				}
 			}
+
+			// Obtener los IDs de los bancos que pertenecen a la empresa del usuario
+			$sqlBanks = "SELECT id_bank FROM banco WHERE id_enterprise = $id_enterprise";
+			$requestBanks = $this->select_all($sqlBanks);
+
+			if (empty($requestBanks)) {
+				return []; // Si no hay bancos para esta empresa, retornar array vacío
+			}
+
+			// Crear lista de IDs de bancos para la consulta IN
+			$bankIds = array_column($requestBanks, 'id_bank');
+			$bankIdsString = implode(',', $bankIds);
 			
 			$sql = "SELECT m.id, b.name as bank, m.account, m.responsible, m.reference, m.date, m.amount, 
 						m.status_id, s.name as status_name, s.description as status_description, 
@@ -73,7 +85,7 @@
 					LEFT JOIN usuario u ON u.id = m.assignment
 					LEFT JOIN banco b ON b.id_bank = m.bank
 					LEFT JOIN transaction_status s ON s.id = m.status_id
-					$where";
+					$where AND b.id_bank IN ($bankIdsString)";
 			
 			return $this->select_all($sql);
 		}

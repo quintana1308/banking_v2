@@ -10,6 +10,15 @@ class Usuario extends Controllers{
 			header('Location: '.base_url().'/login');
 			exit();
 		}
+		
+		// Verificar permisos de acceso al módulo de usuarios (solo admin)
+		$method = $_GET['url'] ?? '';
+		if(strpos($method, 'usuario/usuarios') !== false || strpos($method, 'usuario/getUsuarios') !== false || 
+		   strpos($method, 'usuario/newUsuario') !== false || strpos($method, 'usuario/editUsuario') !== false ||
+		   strpos($method, 'usuario/setUsuario') !== false || strpos($method, 'usuario/updateUsuarioAdmin') !== false ||
+		   strpos($method, 'usuario/delUsuario') !== false) {
+			requireModuleAccess('usuarios');
+		}
 	}
 
 	public function usuario()
@@ -20,6 +29,63 @@ class Usuario extends Controllers{
 		$data['infoUser'] = $this->model->infoUsuario($idUser);
 
 		$this->views->getView($this,"gestor", $data);
+	}
+
+	// Nueva vista de perfil con selector de empresas
+	public function perfil()
+	{
+		$idUser = $_SESSION['idUser'];
+		$data['page_functions_js'] = "functions_perfil.js";
+		$data['infoUser'] = $this->model->infoUsuario($idUser);
+		$data['userEnterprises'] = $this->model->getUserEnterprises($idUser);
+		$data['currentEnterprise'] = $_SESSION['userData']['id_enterprise'];
+		
+		$this->views->getView($this,"perfil", $data);
+	}
+
+	// Cambiar empresa actual del usuario
+	public function cambiarEmpresa()
+	{
+		if($_POST){
+			$idUser = $_SESSION['idUser'];
+			$enterpriseId = intval($_POST['enterprise_id']);
+			
+			// Verificar que el usuario tenga acceso a esta empresa
+			$userEnterprises = $this->model->getUserEnterprises($idUser);
+			$hasAccess = false;
+			
+			foreach($userEnterprises as $enterprise) {
+				if($enterprise['enterprise_id'] == $enterpriseId) {
+					$hasAccess = true;
+					break;
+				}
+			}
+			
+			if($hasAccess) {
+				// Actualizar la empresa actual del usuario
+				$result = $this->model->updateCurrentEnterprise($idUser, $enterpriseId);
+				
+				if($result) {
+					// Actualizar la sesión
+					$_SESSION['userData']['id_enterprise'] = $enterpriseId;
+					
+					// Obtener datos de la nueva empresa
+					$enterpriseData = $this->model->getEnterpriseData($enterpriseId);
+					if($enterpriseData) {
+						$_SESSION['userData']['enterpriseName'] = $enterpriseData['name'];
+						$_SESSION['userData']['rif'] = $enterpriseData['rif'];
+						$_SESSION['userData']['token'] = $enterpriseData['token'];
+						$_SESSION['userData']['table'] = $enterpriseData['table'];
+					}
+					
+					echo json_encode(['status' => 'success', 'message' => 'Empresa cambiada exitosamente']);
+				} else {
+					echo json_encode(['status' => 'error', 'message' => 'Error al cambiar la empresa']);
+				}
+			} else {
+				echo json_encode(['status' => 'error', 'message' => 'No tienes acceso a esta empresa']);
+			}
+		}
 	}
 
 	public function usuarios()

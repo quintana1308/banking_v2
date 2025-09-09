@@ -19,6 +19,10 @@ class Transaccion extends Controllers{
 			exit();
 		}
 
+		// Verificar permisos de acceso al módulo de transacciones
+		if($method !== 'transaccion/getTransaction' && $method !== 'transaccion/getTransactionConciliation') {
+			requireModuleAccess('transacciones');
+		}
 	}
 
 	//FUNCIONES PARA SUERVISOR

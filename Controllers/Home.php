@@ -23,9 +23,6 @@ class Home extends Controllers{
 		$data['countTransaccion'] = $this->model->getCountTransaccion();
 		$data['countIngresos'] = $this->model->getCountIngresos();
 		$data['countEgresos'] = $this->model->getCountEgresos();
-		$data['sumaIngresos'] = $this->model->getSumaIngresos();
-		$data['sumaEgresos'] = $this->model->getSumaEgresos();
-		$data['countEnterprise'] = $this->model->getCountEnterprise();
 		$data['countBank'] = $this->model->getCountBank();
 		$data['enterprise'] = $this->model->getEnterprise();
 		$data['bank'] = $this->model->getBank();

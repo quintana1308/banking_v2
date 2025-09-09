@@ -70,26 +70,40 @@
 		}
 
 		public function checkUsernameExists($username, $excludeId = null){
-
-			$sql = "SELECT id FROM usuario WHERE username = '$username' AND status = 1";
+			$sql = "SELECT id FROM usuario WHERE username = ?";
+			$params = [$username];
 			
-			if($excludeId){
-				$sql .= " AND id != $excludeId";
+			if($excludeId !== null) {
+				$sql .= " AND id != ?";
+				$params[] = $excludeId;
 			}
+			
+			$request = $this->select($sql, $params);
+			return !empty($request);
+		}
 
-			$request = $this->select($sql);
+		public function getUserEnterprises($userId){
+			$sql = "SELECT ue.enterprise_id, e.name as enterprise_name, e.rif, e.token, e.table
+					FROM usuario_empresa ue
+					INNER JOIN empresa e ON e.id = ue.enterprise_id
+					WHERE ue.user_id = $userId AND e.status = 1
+					ORDER BY e.name ASC";
+			$request = $this->select_all($sql);
 			return $request;
 		}
 
-		public function getEnterpriseUser($idUser)
-		{
-			$sql = "SELECT e.*
-				FROM empresa e
-				JOIN usuario_empresa ue ON ue.enterprise_id = e.id
-				WHERE ue.user_id = $idUser";
-						
-			$request = $this->select_all($sql);
+		// Actualizar empresa actual del usuario
+		public function updateCurrentEnterprise($userId, $enterpriseId){
+			$sql = "UPDATE usuario SET id_enterprise = ? WHERE id = ?";
+			$valueArray = array($enterpriseId, $userId);
+			$request = $this->update($sql, $valueArray);
+			return $request;
+		}
 
+		// Obtener datos de una empresa específica
+		public function getEnterpriseData($enterpriseId){
+			$sql = "SELECT id, name, rif, token, `table` FROM empresa WHERE id = ?";
+			$request = $this->select($sql, [$enterpriseId]);
 			return $request;
 		}
 

@@ -66,7 +66,7 @@ $currentController = explode('/', trim($currentRoute, '/'))[0] ?? 'home';
                         <div class="menu-indicator"></div>
                     </a>
                 </li>
-                <?php if(($_SESSION['userData']['ID_ROL'] ?? 0) <= 2) { ?>
+                <?php if(hasModuleAccess('empresas')) { ?>
                 <li class="sidebar-menu-item">
                     <a href="<?= base_url() ?>/enterprise" class="sidebar-menu-link <?= $currentController == 'enterprise' ? 'active' : '' ?>">
                         <div class="menu-icon">
@@ -101,7 +101,7 @@ $currentController = explode('/', trim($currentRoute, '/'))[0] ?? 'home';
         </div>-->
 
         <!-- Sección de Administración (solo para admin) -->
-        <?php if(($_SESSION['userData']['ID_ROL'] ?? 0) == 1) { ?>
+        <?php if(hasModuleAccess('usuarios')) { ?>
         <div class="sidebar-section">
             <div class="sidebar-section-title">
                 <i class="fas fa-shield-alt me-2"></i>
@@ -123,23 +123,25 @@ $currentController = explode('/', trim($currentRoute, '/'))[0] ?? 'home';
 
         <!-- Información del Usuario -->
         <div class="sidebar-user-info">
-            <div class="user-card glass-effect">
-                <div class="user-avatar-sidebar">
-                    <?= strtoupper(substr($_SESSION['userData']['USUARIO'] ?? 'U', 0, 2)) ?>
-                </div>
-                <div class="user-details">
-                    <div class="user-name-sidebar"><?= $_SESSION['userData']['USUARIO'] ?? 'Usuario' ?></div>
-                    <div class="user-role-sidebar">
-                        <?php 
-                        $rol = $_SESSION['userData']['ID_ROL'] ?? 0;
-                        echo $rol == 1 ? 'Administrador' : ($rol == 2 ? 'Gerente' : 'Usuario');
-                        ?>
+            <a href="<?= base_url() ?>/usuario/perfil" class="user-card glass-effect w-100 text-decoration-none">
+                <div class="user-card-content w-100 d-flex align-items-center">
+                    <div class="user-avatar-sidebar">
+                        <?= strtoupper(substr($_SESSION['userData']['USUARIO'] ?? 'U', 0, 2)) ?>
+                    </div>
+                    <div class="user-details flex-grow-1 ps-2">
+                        <div class="user-name-sidebar"><?= $_SESSION['userData']['USUARIO'] ?? 'Usuario' ?></div>
+                        <div class="user-role-sidebar">
+                            <?php 
+                            $rol = $_SESSION['userData']['ID_ROL'] ?? 0;
+                            echo $rol == 1 ? 'Administrador' : ($rol == 2 ? 'Soportista' : 'Cliente');
+                            ?>
+                        </div>
+                    </div>
+                    <div class="user-status d-flex align-items-center">
+                        <div class="status-indicator online"></div>
                     </div>
                 </div>
-                <div class="user-status">
-                    <div class="status-indicator online"></div>
-                </div>
-            </div>
+            </a>
         </div>
 
         <!-- Botón de Cerrar Sesión -->

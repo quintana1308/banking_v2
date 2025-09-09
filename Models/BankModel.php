@@ -14,7 +14,17 @@
 	
 		public function getEnterprise()
 		{
-			$sql = "SELECT * FROM empresa";
+			// Solo admin puede ver todas las empresas
+			if (!canViewAllEnterprises()) {
+				$enterpriseIds = PermissionsHelper::getEnterpriseIdsArray();
+				if (empty($enterpriseIds)) {
+					return [];
+				}
+				$enterpriseIdsStr = implode(',', $enterpriseIds);
+				$sql = "SELECT * FROM empresa WHERE id IN ($enterpriseIdsStr)";
+			} else {
+				$sql = "SELECT * FROM empresa";
+			}
 
 			$request = $this->select_all($sql);
 
@@ -23,8 +33,10 @@
 
         public function getBanks()
 		{
+			$id_enterprise = $_SESSION['userData']['id_enterprise'];
 			$sql = "SELECT b.id, b.name, b.account, e.name as enterprise, b.id_bank, b.banco, b.status FROM banco b
-                    INNER JOIN empresa e ON e.id = b.id_enterprise";
+                    INNER JOIN empresa e ON e.id = b.id_enterprise
+                    WHERE b.id_enterprise = $id_enterprise";
 
 			$request = $this->select_all($sql);
 

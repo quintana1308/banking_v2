@@ -4,4 +4,8 @@
 			require_once("Libraries/".'Core/'.$class.".php");
 		}
 	});
+
+	// Incluir helpers del sistema
+	require_once("Helpers/Helpers.php");
+	require_once("Helpers/PermissionsHelper.php");
  ?>

@@ -10,6 +10,9 @@ class Bank extends Controllers{
 			header('Location: '.base_url().'/login');
 			exit();
 		}
+		
+		// Verificar permisos de acceso al módulo de cuentas bancarias
+		requireModuleAccess('cuentas_bancarias');
 	}
 
 	//MOSTRAR VISTA DE CUENTAS BACARIAS 

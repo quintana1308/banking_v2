@@ -10,6 +10,9 @@ class Enterprise extends Controllers{
 			header('Location: '.base_url().'/login');
 			exit();
 		}
+		
+		// Verificar permisos de acceso al módulo de empresas (solo admin)
+		requireModuleAccess('empresas');
 	}
 
 	//MOSTRAR LISTADO DE EMRPESAS
