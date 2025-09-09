@@ -10,10 +10,74 @@
 		}
 		
 		public function getUsuarios(){
-
-			$sql = "SELECT * FROM usuario";
+			$sql = "SELECT u.id, u.name, u.username, u.type, u.delete_mov, u.status,
+					       r.name as rol_name, e.name as enterprise_name
+					FROM usuario u
+					LEFT JOIN rol r ON r.id = u.id_rol
+					LEFT JOIN empresa e ON e.id = u.id_enterprise
+					ORDER BY u.status DESC, u.name ASC";
 			$request = $this->select_all($sql);
 
+			return $request;
+		}
+
+		public function getRoles(){
+			$sql = "SELECT id, name FROM rol ORDER BY name ASC";
+			$request = $this->select_all($sql);
+			return $request;
+		}
+
+		public function getEmpresas(){
+			$sql = "SELECT id, name FROM empresa ORDER BY name ASC";
+			$request = $this->select_all($sql);
+			return $request;
+		}
+
+		public function insertUsuario($name, $username, $password, $id_rol, $id_enterprise, $type, $delete_mov){
+			$hashedPassword = hash('SHA256', $password);
+			
+			$sql = "INSERT INTO usuario (name, username, password, id_rol, id_enterprise, type, delete_mov) 
+					VALUES (?, ?, ?, ?, ?, ?, ?)";
+			$valueArray = array($name, $username, $hashedPassword, $id_rol, $id_enterprise, $type, $delete_mov);
+			$request = $this->insert($sql, $valueArray);
+
+			return $request;
+		}
+
+		public function updateUsuarioAdmin($id, $name, $username, $id_rol, $id_enterprise, $type, $delete_mov){
+			$sql = "UPDATE usuario SET name = ?, username = ?, id_rol = ?, id_enterprise = ?, type = ?, delete_mov = ? 
+					WHERE id = ?";
+			$valueArray = array($name, $username, $id_rol, $id_enterprise, $type, $delete_mov, $id);
+			$request = $this->update($sql, $valueArray);
+
+			return $request;
+		}
+
+		public function deleteUsuario($id){
+			$sql = "UPDATE usuario SET status = 0 WHERE id = ?";
+			$valueArray = array($id);
+			$request = $this->update($sql, $valueArray);
+
+			return $request;
+		}
+
+		public function activateUsuario($id){
+			$sql = "UPDATE usuario SET status = 1 WHERE id = ?";
+			$valueArray = array($id);
+			$request = $this->update($sql, $valueArray);
+
+			return $request;
+		}
+
+		public function checkUsernameExists($username, $excludeId = null){
+
+			$sql = "SELECT id FROM usuario WHERE username = '$username' AND status = 1";
+			
+			if($excludeId){
+				$sql .= " AND id != $excludeId";
+			}
+
+			$request = $this->select($sql);
 			return $request;
 		}
 

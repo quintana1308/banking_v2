@@ -102,23 +102,23 @@ $currentController = explode('/', trim($currentRoute, '/'))[0] ?? 'home';
 
         <!-- Sección de Administración (solo para admin) -->
         <?php if(($_SESSION['userData']['ID_ROL'] ?? 0) == 1) { ?>
-        <!--<div class="sidebar-section">
+        <div class="sidebar-section">
             <div class="sidebar-section-title">
                 <i class="fas fa-shield-alt me-2"></i>
                 Administración
             </div>
             <ul class="sidebar-menu">
                 <li class="sidebar-menu-item">
-                    <a href="<?= base_url() ?>/usuario" class="sidebar-menu-link <?= $currentController == 'usuario' ? 'active' : '' ?>">
+                    <a href="<?= base_url() ?>/usuario/usuarios" class="sidebar-menu-link <?= $currentController == 'usuario' ? 'active' : '' ?>">
                         <div class="menu-icon">
                             <i class="fas fa-users"></i>
                         </div>
-                        <span class="menu-text">Usuarios</span>
+                        <span class="menu-text">Gestión de Usuarios</span>
                         <div class="menu-indicator"></div>
                     </a>
                 </li>
             </ul>
-        </div>-->
+        </div>
         <?php } ?>
 
         <!-- Información del Usuario -->

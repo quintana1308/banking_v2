@@ -636,6 +636,54 @@
         100% { transform: rotate(360deg); }
     }
 
+    /* Botones de acción para tablas */
+    .btn-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 35px;
+        height: 35px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin: 0 2px;
+        font-size: 0.9rem;
+    }
+
+    .btn-action.btn-edit {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-action.btn-edit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-action.btn-delete {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+        color: white;
+        box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+    }
+
+    .btn-action.btn-delete:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(255, 107, 107, 0.4);
+    }
+
+    .btn-action.btn-activate {
+        background: linear-gradient(135deg, #51cf66 0%, #40c057 100%);
+        color: white;
+        box-shadow: 0 4px 15px rgba(81, 207, 102, 0.3);
+    }
+
+    .btn-action.btn-activate:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(81, 207, 102, 0.4);
+    }
+
     /* Formularios futuristas específicos */
     .form-group-futuristic {
         margin-bottom: 1.5rem;
