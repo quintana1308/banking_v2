@@ -62,7 +62,7 @@ class Enterprise extends Controllers{
 		}
 	}
 
-	//ELIMINAR EMPRESA POR SU ID
+	//ELIMINAR EMPRESA POR SU ID //
 	public function deleteEnterprise($id)
 	{		
 		$response = $this->model->deleteEnterprise($id);
