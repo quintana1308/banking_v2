@@ -78,7 +78,6 @@ document.addEventListener('DOMContentLoaded',function(){
                 }
             }
         ],
-        "resonsieve":"true",
         "bDestroy": true,
         "iDisplayLength": 50,
         "order":[[0,"asc"]]  
