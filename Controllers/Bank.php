@@ -33,7 +33,7 @@ class Bank extends Controllers{
 	public function new()
 	{	
 		// Solo administradores pueden crear cuentas bancarias
-		if(!isset($_SESSION['userData']['id_rol']) || $_SESSION['userData']['id_rol'] != 1) {
+		if(!isset($_SESSION['userData']['ID_ROL']) || $_SESSION['userData']['ID_ROL'] != 1) {
 			header('Location: '.base_url().'/errors/permisos');
 			exit();
 		}
@@ -46,12 +46,6 @@ class Bank extends Controllers{
 	//VISTA PARA EDITAR UNA CUENTA BACARIA
 	public function edit($id)
 	{	
-		// Solo administradores pueden editar cuentas bancarias
-		if(!isset($_SESSION['userData']['id_rol']) || $_SESSION['userData']['id_rol'] != 1) {
-			header('Location: '.base_url().'/error/permisos');
-			exit();
-		}
-		
 		$data['page_functions_js'] = "functions_bank.js";
 		$data['enterprise'] = $this->model->getEnterprise();
 		$data['bank'] = $this->model->getBank($id);
@@ -62,7 +56,7 @@ class Bank extends Controllers{
 	public function setBank()
 	{	
 		// Solo administradores pueden crear cuentas bancarias
-		if(!isset($_SESSION['userData']['id_rol']) || $_SESSION['userData']['id_rol'] != 1) {
+		if(!isset($_SESSION['userData']['ID_ROL']) || $_SESSION['userData']['ID_ROL'] != 1) {
 			echo json_encode([
 				'status' => false,
 				'message' => 'No tienes permisos para realizar esta acción.'
@@ -103,15 +97,6 @@ class Bank extends Controllers{
 	//PROCESO PARA ACTUALIZAR UNA CUENTA BANCARIA
 	public function updateBank()
 	{	
-		// Solo administradores pueden actualizar cuentas bancarias
-		if(!isset($_SESSION['userData']['id_rol']) || $_SESSION['userData']['id_rol'] != 1) {
-			echo json_encode([
-				'status' => false,
-				'message' => 'No tienes permisos para realizar esta acción.'
-			]);
-			die();
-		}
-		
 		if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 			echo json_encode([
 				'status' => false,

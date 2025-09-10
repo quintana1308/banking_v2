@@ -109,7 +109,7 @@
 			$requestBanks = $this->select_all($sqlBanks);
 
 			if (empty($requestBanks)) {
-				return []; // Si no hay bancos para esta empresa, retornar 0
+				return ['total' => 0]; // Si no hay bancos para esta empresa, retornar 0
 			}
 
 			// Crear lista de IDs de bancos para la consulta IN
@@ -135,7 +135,7 @@
 			$requestBanks = $this->select_all($sqlBanks);
 
 			if (empty($requestBanks)) {
-				return []; // Si no hay bancos para esta empresa, retornar 0
+				return ['total' => 0]; // Si no hay bancos para esta empresa, retornar 0
 			}
 
 			// Crear lista de IDs de bancos para la consulta IN
