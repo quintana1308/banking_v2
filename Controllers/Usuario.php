@@ -149,6 +149,7 @@ class Usuario extends Controllers{
 		$data['usuario'] = $this->model->infoUsuario($id);
 		$data['roles'] = $this->model->getRoles();
 		$data['empresas'] = $this->model->getEmpresas();
+		$data['userEnterprises'] = $this->model->getUserEnterprises($id);
 		$this->views->getView($this,"edit_usuario", $data);
 	}
 
@@ -156,7 +157,7 @@ class Usuario extends Controllers{
 	{
 		if($_POST){
 			if(empty($_POST['name']) || empty($_POST['username']) || empty($_POST['password']) || 
-			   empty($_POST['id_rol']) || empty($_POST['id_enterprise']) || empty($_POST['type']) || 
+			   empty($_POST['id_rol']) || empty($_POST['empresas']) || empty($_POST['type']) || 
 			   !isset($_POST['delete_mov'])){
 				$arrResponse = array('status' => false, 'msg' => 'Todos los campos son obligatorios');
 			}else{
@@ -169,13 +170,16 @@ class Usuario extends Controllers{
 					$username = $_POST['username'];
 					$password = $_POST['password'];
 					$id_rol = $_POST['id_rol'];
-					$id_enterprise = $_POST['id_enterprise'];
+					$empresas = $_POST['empresas']; // Array de empresas
 					$type = $_POST['type'];
 					$delete_mov = $_POST['delete_mov'];
 
-					$res = $this->model->insertUsuario($name, $username, $password, $id_rol, $id_enterprise, $type, $delete_mov);
+					// La primera empresa seleccionada será la principal
+					$id_enterprise_principal = $empresas[0];
+
+					$res = $this->model->insertUsuarioWithEmpresas($name, $username, $password, $id_rol, $id_enterprise_principal, $type, $delete_mov, $empresas);
 					if($res){
-						$arrResponse = array('status' => true, 'msg' => 'Usuario creado correctamente');
+						$arrResponse = array('status' => true, 'msg' => 'Usuario creado correctamente con ' . count($empresas) . ' empresa(s) asignada(s)');
 					}else{
 						$arrResponse = array('status' => false, 'msg' => 'Error al crear el usuario');
 					}
@@ -190,7 +194,7 @@ class Usuario extends Controllers{
 	{
 		if($_POST){
 			if(empty($_POST['id']) || empty($_POST['name']) || empty($_POST['username']) || 
-			   empty($_POST['id_rol']) || empty($_POST['id_enterprise']) || empty($_POST['type']) || 
+			   empty($_POST['id_rol']) || empty($_POST['empresas']) || empty($_POST['type']) || 
 			   !isset($_POST['delete_mov'])){
 				$arrResponse = array('status' => false, 'msg' => 'Todos los campos son obligatorios');
 			}else{
@@ -203,13 +207,13 @@ class Usuario extends Controllers{
 					$name = $_POST['name'];
 					$username = $_POST['username'];
 					$id_rol = $_POST['id_rol'];
-					$id_enterprise = $_POST['id_enterprise'];
+					$empresas = $_POST['empresas']; // Array de empresas
 					$type = $_POST['type'];
 					$delete_mov = $_POST['delete_mov'];
 
-					$res = $this->model->updateUsuarioAdmin($id, $name, $username, $id_rol, $id_enterprise, $type, $delete_mov);
+					$res = $this->model->updateUsuarioWithEmpresas($id, $name, $username, $id_rol, $empresas, $type, $delete_mov);
 					if($res){
-						$arrResponse = array('status' => true, 'msg' => 'Usuario actualizado correctamente');
+						$arrResponse = array('status' => true, 'msg' => 'Usuario actualizado correctamente con ' . count($empresas) . ' empresa(s) asignada(s)');
 					}else{
 						$arrResponse = array('status' => false, 'msg' => 'Error al actualizar el usuario');
 					}

@@ -81,14 +81,15 @@ document.addEventListener('DOMContentLoaded', function () {
             let username = document.querySelector('#username').value;
             let password = document.querySelector('#password').value;
             let id_rol = document.querySelector('#id_rol').value;
-            let id_enterprise = document.querySelector('#id_enterprise').value;
+            let empresasSelect = document.querySelector('#empresas');
+            let selectedEmpresas = Array.from(empresasSelect.selectedOptions).map(option => option.value);
             let type = document.querySelector('#type').value;
             let delete_mov = document.querySelector('#delete_mov').checked ? 1 : 0;
 
-            if (name == "" || username == "" || password == "" || id_rol == "" || id_enterprise == "" || type == "") {
+            if (name == "" || username == "" || password == "" || id_rol == "" || selectedEmpresas.length == 0 || type == "") {
                 Swal.fire({
                 title: "Por favor",
-                text: "Todos los campos son obligatorios.",
+                text: "Todos los campos son obligatorios. Debe seleccionar al menos una empresa.",
                 icon: "error",
                 background: '#19233adb',
                 color: '#fff',
@@ -114,13 +115,15 @@ document.addEventListener('DOMContentLoaded', function () {
                         text: data.msg,
                         icon: "success",
                         timer: 2000,
+                        showConfirmButton: false,
                         background: '#19233adb',
                         color: '#fff',
                         customClass: {
                             popup: 'futuristic-popup'
+                        },
+                        willClose: () => {
+                            window.location.href = base_url + '/usuario/usuarios';
                         }
-                    }).then(() => {
-                        window.location.href = base_url + '/usuario/usuarios';
                     });
                 } else {
                     Swal.fire({
@@ -161,14 +164,15 @@ document.addEventListener('DOMContentLoaded', function () {
             let name = document.querySelector('#name').value;
             let username = document.querySelector('#username').value;
             let id_rol = document.querySelector('#id_rol').value;
-            let id_enterprise = document.querySelector('#id_enterprise').value;
+            let empresasSelect = document.querySelector('#empresas');
+            let selectedEmpresas = Array.from(empresasSelect.selectedOptions).map(option => option.value);
             let type = document.querySelector('#type').value;
             let delete_mov = document.querySelector('#delete_mov').checked ? 1 : 0;
 
-            if (id == "" || name == "" || username == "" || id_rol == "" || id_enterprise == "" || type == "") {
+            if (id == "" || name == "" || username == "" || id_rol == "" || selectedEmpresas.length == 0 || type == "") {
                 Swal.fire({
                 title: "Por favor",
-                text: "Todos los campos son obligatorios.",
+                text: "Todos los campos son obligatorios. Debe seleccionar al menos una empresa.",
                 icon: "error",
                 background: '#19233adb',
                 color: '#fff',
@@ -189,18 +193,17 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(response => response.json())
             .then(data => {
                 if (data.status) {
-                    Swal.fire({
-                        title: "¡Éxito!",
-                        text: data.msg,
+                    Swal.fire({ 
+                        title: "¡Éxito!", 
+                        text: data.msg, 
                         icon: "success",
-                        timer: 2000,
-                        background: '#19233adb',
-                        color: '#fff',
-                        customClass: {
-                            popup: 'futuristic-popup'
-                        }
-                    }).then(() => {
-                        window.location.href = base_url + '/usuario/usuarios';
+                        background: '#19233adb', 
+                        color: '#fff', 
+                        customClass: { 
+                            popup: 'futuristic-popup' 
+                        } 
+                    }).then(() => { 
+                        window.location.href = base_url + '/usuario/usuarios'; 
                     });
                 } else {
                     Swal.fire({

@@ -396,7 +396,6 @@ document.addEventListener('DOMContentLoaded', function () {
                             title: 'Éxito',
                             text: message,
                             icon: 'success',
-                            timer: 2000,
                             background: '#19233adb',
                             color: '#fff',
                             customClass: {

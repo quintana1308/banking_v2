@@ -725,3 +725,197 @@ body {
     align-items: center;
     flex-shrink: 0;
 }
+
+/* ===== MULTISELECT PERSONALIZADO ===== */
+.multiselect-btn {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-height: 50px;
+    width: 100%;
+    text-align: left;
+    color: var(--text-secondary);
+}
+
+.multiselect-btn:hover {
+    border-color: var(--text-accent);
+    box-shadow: 0 0 20px rgba(102, 126, 234, 0.3);
+    color: var(--text-primary);
+}
+
+.multiselect-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    margin-top: 4px;
+    z-index: 1000;
+    display: none;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.multiselect-option {
+    display: flex;
+    align-items: center;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.multiselect-option:last-child {
+    border-bottom: none;
+}
+
+.multiselect-option:hover {
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.multiselect-option input[type="checkbox"] {
+    margin-right: 12px;
+    width: 16px;
+    height: 16px;
+    accent-color: var(--text-accent);
+    cursor: pointer;
+}
+
+.multiselect-option label {
+    color: var(--text-primary);
+    font-size: 14px;
+    cursor: pointer;
+    flex: 1;
+    margin: 0;
+}
+
+/* ===== TAGS DE EMPRESAS SELECCIONADAS ===== */
+.selected-enterprises {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.enterprise-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    border-radius: 20px;
+    font-size: 12px;
+    color: white !important;
+    animation: fadeInScale 0.3s ease;
+}
+
+.enterprise-tag.primary {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%) !important;
+}
+
+/* Asegurar que los tags tengan colores en ambos formularios */
+.selected-enterprises .enterprise-tag {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+}
+
+.selected-enterprises .enterprise-tag.primary {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%) !important;
+}
+
+.primary-badge {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.remove-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 10px;
+    color: white;
+    transition: all 0.3s ease;
+}
+
+.remove-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Ocultar select original cuando hay interfaz personalizada */
+.input-container:has(.multiselect-btn) select {
+    display: none !important;
+}
+
+/* Scrollbar personalizado para multiselect */
+.multiselect-dropdown::-webkit-scrollbar {
+    width: 6px;
+}
+
+.multiselect-dropdown::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+}
+
+.multiselect-dropdown::-webkit-scrollbar-thumb {
+    background: var(--text-accent);
+    border-radius: 3px;
+}
+
+.multiselect-dropdown::-webkit-scrollbar-thumb:hover {
+    background: #5a6fd8;
+}
+
+/* ===== RESPONSIVE MULTISELECT ===== */
+@media (max-width: 768px) {
+    .multiselect-dropdown {
+        position: fixed;
+        top: 50% !important;
+        left: 50% !important;
+        right: auto !important;
+        transform: translate(-50%, -50%) !important;
+        width: 90vw;
+        max-width: 400px;
+        max-height: 70vh;
+    }
+    
+    .enterprise-tag {
+        font-size: 11px;
+        padding: 4px 8px;
+    }
+    
+    .primary-badge {
+        font-size: 9px;
+        padding: 1px 4px;
+    }
+}

@@ -70,16 +70,92 @@
 		}
 
 		public function checkUsernameExists($username, $excludeId = null){
-			$sql = "SELECT id FROM usuario WHERE username = ?";
-			$params = [$username];
+			$sql = "SELECT id FROM usuario WHERE username = '$username'";
+			
 			
 			if($excludeId !== null) {
-				$sql .= " AND id != ?";
-				$params[] = $excludeId;
+				$sql .= " AND id != $excludeId";
 			}
 			
-			$request = $this->select($sql, $params);
+			$request = $this->select($sql);
 			return !empty($request);
+		}
+
+		// Insertar usuario con múltiples empresas
+		public function insertUsuarioWithEmpresas($name, $username, $password, $id_rol, $id_enterprise_principal, $type, $delete_mov, $empresas){
+			// Iniciar transacción
+			//$this->conexion->beginTransaction();
+
+			try {
+				// 1. Insertar usuario principal
+				$password_hash = hash('sha256', $password);
+				$sql = "INSERT INTO usuario (name, username, password, id_rol, id_enterprise, type, delete_mov) VALUES (?, ?, ?, ?, ?, ?, ?)";
+				$valueArray = array($name, $username, $password_hash, $id_rol, $id_enterprise_principal, $type, $delete_mov);
+				$userId = $this->insertID($sql, $valueArray);
+				
+				if($userId) {
+					// 2. Insertar relaciones en usuario_empresa
+					foreach($empresas as $enterpriseId) {
+						$sqlEmpresa = "INSERT INTO usuario_empresa (user_id, enterprise_id) VALUES (?, ?)";
+						$valueArrayEmpresa = array($userId, $enterpriseId);
+						$this->insert($sqlEmpresa, $valueArrayEmpresa);
+					}
+					
+					// Confirmar transacción
+					//$this->conexion->commit();
+					return $userId;
+				} else {
+					//$this->conexion->rollback();
+					return false;
+				}
+			} catch (Exception $e) {
+				//$this->conexion->rollback();
+				return false;
+			}
+		}
+
+		// Actualizar usuario con múltiples empresas
+		public function updateUsuarioWithEmpresas($id, $name, $username, $id_rol, $empresas, $type, $delete_mov){
+			// Iniciar transacción
+			//$this->conexion->beginTransaction();
+			
+			try {
+
+				// 1. Determinar empresa principal
+				$currentEnterprise = $this->select("SELECT id_enterprise FROM usuario WHERE id = $id");
+				$currentEnterpriseId = $currentEnterprise ? $currentEnterprise['id_enterprise'] : null;
+				
+				// Si la empresa actual no está en las seleccionadas, usar la primera seleccionada
+				$newPrincipalEnterprise = in_array($currentEnterpriseId, $empresas) ? $currentEnterpriseId : $empresas[0];
+				
+				// 2. Actualizar usuario principal
+				$sql = "UPDATE usuario SET `name` = ?, username = ?, id_rol = ?, id_enterprise = ?, `type` = ?, delete_mov = ? WHERE id = ?";
+				$valueArray = array($name, $username, $id_rol, $newPrincipalEnterprise, $type, $delete_mov, $id);
+				$request = $this->update($sql, $valueArray);
+
+				if($request) {
+					// 3. Eliminar relaciones existentes en usuario_empresa
+					$sqlDelete = "DELETE FROM usuario_empresa WHERE user_id = $id";
+					$this->delete($sqlDelete);
+					
+					// 4. Insertar nuevas relaciones
+					foreach($empresas as $enterpriseId) {
+						$sqlEmpresa = "INSERT INTO usuario_empresa (user_id, enterprise_id) VALUES (?, ?)";
+						$valueArrayEmpresa = array($id, $enterpriseId);
+						$this->insert($sqlEmpresa, $valueArrayEmpresa);
+					}
+					
+					// Confirmar transacción
+					//$this->conexion->commit();
+					return true;
+				} else {
+					//$this->conexion->rollback();
+					return false;
+				}
+			} catch (Exception $e) {
+				//$this->conexion->rollback();
+				return false;
+			}
 		}
 
 		public function getUserEnterprises($userId){
