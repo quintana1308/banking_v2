@@ -1474,6 +1474,7 @@ class Transaccion extends Controllers{
 			$sheet = $spreadsheet->getActiveSheet();
 			$rows = $sheet->toArray();
 
+			
 			$movimientos_transformados = [];
 			$totalMovimientos = 0;
 			
@@ -1483,8 +1484,8 @@ class Transaccion extends Controllers{
 				if (empty($fila[1])) {
 					break; // Termina el ciclo si la fecha está vacía
 				}
-				
-				$fecha = DateTime::createFromFormat('m/d/Y', $fila[1])->format('Y-m-d');
+
+				$fecha = DateTime::createFromFormat('d/m/y', $fila[1])->format('Y-m-d');
 
 				$debit = $this->parseEuropeanNumber($fila[4]);
 				$credit = $this->parseEuropeanNumber($fila[5]);
@@ -1532,7 +1533,7 @@ class Transaccion extends Controllers{
 			$spreadsheet = IOFactory::load($filePath);
 			$sheet = $spreadsheet->getActiveSheet();
 			$rows = $sheet->toArray();
-			
+
 			$movimientos_transformados = [];
 			$totalMovimientos = 0;
 
