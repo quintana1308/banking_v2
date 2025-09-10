@@ -155,6 +155,7 @@ ob_start();
                                             <option value="PLZ">PLZ - PLAZA</option>
                                             <option value="BPL">BPL - BANPLUS</option>
                                             <option value="TSR">TSR - TESORO</option>
+                                            <option value="BAC">BAC - CARIBE</option>
                                         </select>
                                         <div class="invalid-feedback d-none" id="messagePrex">
                                             El campo es obligatorio

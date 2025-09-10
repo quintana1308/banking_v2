@@ -156,6 +156,7 @@ ob_start();
                                             <option value="PLZ" <?= ($data['bank']['banco'] == 'PLZ') ? 'selected' : '' ?>>PLZ - PLAZA</option>
                                             <option value="BPL" <?= ($data['bank']['banco'] == 'BPL') ? 'selected' : '' ?>>BPL - BANPLUS</option>
                                             <option value="TSR" <?= ($data['bank']['banco'] == 'TSR') ? 'selected' : '' ?>>TSR - TESORO</option>
+                                            <option value="BAC" <?= ($data['bank']['banco'] == 'BAC') ? 'selected' : '' ?>>BAC - CARIBE</option>
                                         </select>
                                         <div class="invalid-feedback d-none" id="messagePrex">
                                             El campo es obligatorio
