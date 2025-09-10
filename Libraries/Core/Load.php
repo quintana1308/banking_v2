@@ -9,10 +9,16 @@
 		{
 			$controller->{$method}($params);
 		}else{
-			require_once("Controllers/Error.php");
+			// Método no existe - mostrar error 404
+			require_once("Controllers/Errors.php");
+			$errorController = new Errors();
+			$errorController->notFound();
 		}
 	}else{
-		require_once("Controllers/Error.php");
+		// Controlador no existe - mostrar error 404
+		require_once("Controllers/Errors.php");
+		$errorController = new Errors();
+		$errorController->notFound();
 	}
 
  ?>

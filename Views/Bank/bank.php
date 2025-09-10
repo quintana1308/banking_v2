@@ -76,11 +76,13 @@ ob_start();
                     </div>
                 </div>
                 <div class="d-flex align-items-center gap-3">
+                    <?php if(isset($_SESSION['userData']['id_rol']) && $_SESSION['userData']['id_rol'] == 1): ?>
                     <a href="<?= base_url() ?>/bank/new" class="btn-primary-futuristic text-decoration-none">
                         <span class="btn-glow"></span>
                         <i class="fas fa-plus me-2"></i>
                         Nueva Cuenta
                     </a>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
