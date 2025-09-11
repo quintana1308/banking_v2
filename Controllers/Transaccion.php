@@ -1233,6 +1233,33 @@ class Transaccion extends Controllers{
 			$sheet = $spreadsheet->getActiveSheet();
 			$rows = $sheet->toArray();
 
+			foreach ($rows as $fila) {
+				if (count($fila) > 7) {
+					$result = $this->procesarExcelVenezuela2($filePath);
+					return $result;
+				}else{
+					$result = $this->procesarExcelVenezuela1($filePath);
+					return $result;
+				}
+			}
+
+		} catch (Exception $e) {
+			if (file_exists($filePath)) unlink($filePath);
+			echo json_encode([
+				'success' => false,
+				'msg' => 'Archivo Excel esta dañado y/o absoleto.'
+			]);
+			die();
+		}
+	}
+
+	private function procesarExcelVenezuela1($filePath){
+		
+		try {
+			$spreadsheet = IOFactory::load($filePath);
+			$sheet = $spreadsheet->getActiveSheet();
+			$rows = $sheet->toArray();
+
 			$movimientos_transformados = [];
 			$totalMovimientos = 0;
 			
@@ -1258,6 +1285,59 @@ class Transaccion extends Controllers{
 				
 				$totalMovimientos++;
 			}
+			return [
+				'total' => $totalMovimientos,
+				'mov' => $movimientos_transformados
+				];
+
+		} catch (Exception $e) {
+			if (file_exists($filePath)) unlink($filePath);
+			echo json_encode([
+				'success' => false,
+				'msg' => 'Archivo Excel esta dañado y/o absoleto.'
+			]);
+			die();
+		}
+	}
+
+	private function procesarExcelVenezuela2($filePath){
+		
+		try {
+			$spreadsheet = IOFactory::load($filePath);
+			$sheet = $spreadsheet->getActiveSheet();
+			$rows = $sheet->toArray();
+
+			$movimientos_transformados = [];
+			$totalMovimientos = 0;
+			
+			// Asume que la primera fila son los encabezados
+			for ($i = 1; $i < count($rows); $i++) {
+				$fila = $rows[$i];
+
+
+				if ($fila[2] == 'SALDO INICIAL') {
+					continue;
+				}
+				
+		
+				$fecha = DateTime::createFromFormat('d-m-Y H:i', $fila[0])->format('Y-m-d');
+
+				if ($fila[7] == 'Nota de Crédito') {
+					$monto = $this->parseEuropeanNumber($fila[4]);
+				} else {
+					$monto = $this->parseEuropeanNumber($fila[3]);
+				}
+
+				// Ajusta los índices [0], [1], [2] según el orden de tus columnas
+				$movimientos_transformados[] = [
+					'fecha'      => $fecha,  // Ej: "2024-01-01"
+					'referencia' => $fila[1],  // Ej: "123456"
+					'monto'      => $monto,  // Ej: "100.00"
+				];
+				
+				$totalMovimientos++;
+			}
+			
 			return [
 				'total' => $totalMovimientos,
 				'mov' => $movimientos_transformados
