@@ -124,8 +124,17 @@ class Transaccion extends Controllers{
 			$desde = $request['desde'] ?? '';
 			$hasta = $request['hasta'] ?? '';
 
-			if ($token !== '' && $rif !== '' && $cuenta !== '' && $opcion !== '' && $desde !== '' && $hasta !== '') {
-				$getTransaction = $this->model->getTransactionEndPoint($token, $rif, $bd, $cuenta, $opcion, $desde, $hasta);
+			if ($token !== '' && $rif !== '' && $opcion !== '' && $desde !== '' && $hasta !== '') {
+				if($opcion != 'movimientosTotal'){
+					if($cuenta !== ''){
+						$getTransaction = $this->model->getTransactionEndPoint($token, $rif, $bd, $cuenta, $opcion, $desde, $hasta);
+					}else{
+						$arrResponse = ['status' => false, 'msg' => 'Campos requeridos faltantes'];
+					}
+				}else{
+					$cuenta = '';
+					$getTransaction = $this->model->getTransactionEndPoint($token, $rif, $bd, $cuenta, $opcion, $desde, $hasta);
+				}
 				$arrResponse = array('status' => true, 'data' => $getTransaction );
 			} else {
 				$arrResponse = ['status' => false, 'msg' => 'Campos requeridos faltantes'];
@@ -1958,6 +1967,8 @@ class Transaccion extends Controllers{
 			$sheet = $spreadsheet->getActiveSheet();
 			$rows = $sheet->toArray();
 			
+			dep($rows);
+			exit;
 			$movimientos_transformados = [];
 			$totalMovimientos = 0;
 
