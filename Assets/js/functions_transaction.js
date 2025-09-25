@@ -178,7 +178,7 @@ document.addEventListener('DOMContentLoaded', function () {
         "searching": false,
         "bDestroy": true,
         "iDisplayLength": 50,
-        "order": [[5, "desc"]],
+        "order": [[4, "asc"]],
         "scrollX": true,
         "autoWidth": false
     });
@@ -237,6 +237,18 @@ document.addEventListener('DOMContentLoaded', function () {
     function updateAccountFilter() {
         const selectedBank = $('#filtroBank').val();
         const selectedAccount = $('#filtroAccount').val();
+        const selectAccount = $('#filtroAccount');
+
+        // Si no hay banco seleccionado, deshabilitar el select de cuenta
+        if (!selectedBank || selectedBank === '') {
+            selectAccount.prop('disabled', true)
+                        .empty()
+                        .append('<option value="">Seleccione un banco primero</option>');
+            return;
+        }
+
+        // Habilitar el select de cuenta
+        selectAccount.prop('disabled', false);
 
         // Filtrar cuentas según el banco seleccionado usando los datos originales
         let filteredAccounts = allAccounts;
@@ -248,7 +260,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // Actualizar select de cuentas
-        const selectAccount = $('#filtroAccount').empty().append('<option value="">Todas</option>');
+        selectAccount.empty().append('<option value="">Todas las cuentas</option>');
         filteredAccounts.forEach(account => {
             if (account) {
                 const selected = account === selectedAccount ? 'selected' : '';
@@ -302,7 +314,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             });
 
-            // Actualizar filtroAccount inicialmente con todas las cuentas
+            // Actualizar filtroAccount inicialmente - se mantendrá deshabilitado hasta seleccionar banco
             updateAccountFilter();
 
             // Marcar que ya no es la primera carga

@@ -309,7 +309,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function handleFileSelect(file) {
         // Validate file type
-        const allowedTypes = ['.xlsx', '.xls', '.csv'];
+        const allowedTypes = ['.xlsx', '.xls', '.csv', '.pdf'];
         const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
         
         if (!allowedTypes.includes(fileExtension)) {

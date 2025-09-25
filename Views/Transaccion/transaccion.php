@@ -95,8 +95,8 @@ ob_start();
                                     Cuenta
                                 </label>
                                 <div class="input-container">
-                                    <select id="filtroAccount" class="form-control-futuristic">
-                                        <option value="">Todas</option>
+                                    <select id="filtroAccount" class="form-control-futuristic" disabled>
+                                        <option value="">Seleccione un banco primero</option>
                                     </select>
                                     <div class="input-border"></div>
                                 </div>

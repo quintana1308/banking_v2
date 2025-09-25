@@ -19,7 +19,7 @@
 		public function getTransaction($filters = [])
 		{
 
-		
+			
 			$id_enterprise = $_SESSION['userData']['id_enterprise'];
 			$sqlTable = "SELECT * FROM empresa WHERE id = $id_enterprise";
 			$requestEnterprise = $this->select($sqlTable);
@@ -30,7 +30,11 @@
 				
 				$bank = $filters['bank'];
 
-				$where .= " AND m.bank LIKE '%$bank%'";
+				$sqlBanks = "SELECT id_bank FROM banco WHERE id_enterprise = $id_enterprise AND `name` = '$bank'";
+				$requestBanks = $this->select_all($sqlBanks);
+				$id_bank = $requestBanks[0]['id_bank'];
+
+				$where .= " AND m.bank LIKE '%$id_bank%'";
 			}
 			if (!empty($filters['account'])) {
 				$account = $filters['account'];
@@ -67,7 +71,7 @@
 			}
 
 			// Obtener los IDs de los bancos que pertenecen a la empresa del usuario
-			$sqlBanks = "SELECT id_bank FROM banco WHERE id_enterprise = $id_enterprise";
+			/*$sqlBanks = "SELECT id_bank FROM banco WHERE id_enterprise = $id_enterprise";
 			$requestBanks = $this->select_all($sqlBanks);
 
 			if (empty($requestBanks)) {
@@ -76,17 +80,17 @@
 
 			// Crear lista de IDs de bancos para la consulta IN
 			$bankIds = array_column($requestBanks, 'id_bank');
-			$bankIdsString = implode(',', $bankIds);
+			$bankIdsString = implode(',', $bankIds);*/
 			
 			$sql = "SELECT m.id, b.name as bank, m.account, m.responsible, m.reference, m.date, m.amount, 
 						m.status_id, s.name as status_name, s.description as status_description, 
 						u.id as id_user, u.name as name_user
 					FROM $table m
 					LEFT JOIN usuario u ON u.id = m.assignment
-					LEFT JOIN banco b ON b.id_bank = m.bank
+					LEFT JOIN banco b ON b.id_bank = m.bank AND b.`account` = m.`account`
 					LEFT JOIN transaction_status s ON s.id = m.status_id
-					$where AND b.id_bank IN ($bankIdsString)";
-			
+					$where";
+					
 			return $this->select_all($sql);
 		}
 

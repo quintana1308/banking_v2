@@ -50,7 +50,7 @@ class Transaccion extends Controllers{
 			'date'     => $_GET['date']     ?? '',
 			'estado'   => $_GET['estado']    ?? '',
 		];
-		
+
 		$arrData = $this->model->getTransaction($filters);
 		
 		// Agregar información de permisos para cada registro
@@ -328,75 +328,131 @@ class Transaccion extends Controllers{
 			}
 
 			if ($fileExt === 'pdf') {
-		
-				if (move_uploaded_file($tmpName, $uploadPath)) {
 
-					// Separar banco ID y prefijo
-					$bancoParts = explode('.', $banco);
-					$bancoId = $bancoParts[0] ?? null;
-					$bancoPrefijo = $bancoParts[1] ?? null;
-
-					// Seleccionar función por banco
-					$movimientosFormat = null;
-
-					$fileUrl = base_url() .'/'. $fileName;
-					// API Key ahora se obtiene desde Config/Config.php (constante PDFCO_API_KEY)
-					$apiKey = $this->getPdfcoApiKey();
-					if ($apiKey === '') {
-						// Limpia archivo temporal y retorna error claro si falta configuración
-						unlink($uploadPath);
-						echo json_encode([
-							'status' => false,
-							'msg' => 'Falta configurar la API Key (PDFCO_API_KEY) en Config/Config.php.'
-						], JSON_UNESCAPED_UNICODE);
-						die();
-					}
-
-					switch ($bancoPrefijo) {
-						case 'BCM':
-							$movimientosFormat = $this->bancoBancamiga($fileUrl, $apiKey, '30761');
-							break;
-						case 'BCT':
-							$movimientosFormat = $this->bancoBicentenario($fileUrl, $apiKey, '30765');
-							break;
-					}
-
-					// Validación de estructura antes de acceder a ['mov']
-					if (!is_array($movimientosFormat) || !isset($movimientosFormat['mov']) || !is_array($movimientosFormat['mov'])) {
-						// Eliminar archivo temporal y responder error claro
-						unlink($uploadPath);
-						echo json_encode([
-							'status' => false,
-							'msg' => 'Banco/prefijo no soportado o no se obtuvieron movimientos del archivo (PDF). Prefijo: ' . (string)$bancoPrefijo
-						], JSON_UNESCAPED_UNICODE);
-						die();
-					}
-
-					$inserted = $this->model->insertTransaction($anio, $mes, $bancoId, $movimientosFormat['mov']);
-
-					// Eliminar archivo temporal
-					unlink($uploadPath);
-
-					if($inserted['status']){
-						if($inserted['error'] == 1){
-							$arrResponse = array('status' => false, 'msg' => 'Hubo un problema y no se subieron movimientos.' );
-						}else{
-							$arrResponse = array('status' => true, 'msg' => 'Se procesaron '.$inserted['total_processed'].' movimientos, Se insertaron '.$inserted['inserted'].' y se omitieron '.$inserted['duplicates_skipped'].'.');
-						}
-					}else{
-						$arrResponse = array('status' => false, 'msg' => 'Hubo un problema y no se subieron movimientos.' );
-					}
-
-					echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
-					die();
-					
-				} else {
-					echo json_encode([
-						'success' => false,
-						'msg' => 'No se pudo guardar el archivo en el servidor.'
-					]);
+				if (!move_uploaded_file($tmpName, $uploadPath)) {
+					$arrResponse = array('status' => true, 'msg' => 'No se pudo guardar el archivo en el servidor.' );
+					echo json_encode($arrResponse,JSON_UNESCAPED_UNICODE);
 					die();
 				}
+
+				$fileUrl = 'https://iabanking.apps-adn.com/EstadoDeCuenta.pdf';
+
+					// Aquí sigue tu lógica PDF.co:
+					//$apiKey = "adnlean.com@gmail.com_SfBGojnr2FuvXSWOHxuu8MzeyudrwopxbuyaxhvbWpUSXreGnto0giAxCbuucJGV";
+					$apiKey = "quintanaanthony7@gmail.com_b9WaxV2FmVU4oq3YEKxOc9zNyrjDy8xjg7o8nZoDmXrnd6ADsgwK36PJhMb97ILq";
+					$url = "https://api.pdf.co/v1/ai-invoice-parser";
+					$params = ["url" => $fileUrl];
+					$curl = curl_init();
+					curl_setopt($curl, CURLOPT_HTTPHEADER, [
+						"x-api-key: $apiKey",
+						"Content-type: application/json"
+					]);
+					curl_setopt($curl, CURLOPT_URL, $url);
+					curl_setopt($curl, CURLOPT_POST, true);
+					curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+					curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($params));
+
+					$result = curl_exec($curl);
+
+					if (curl_errno($curl) === 0) {
+						$status_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+
+						if ($status_code == 200) {
+							$json = json_decode($result, true);
+
+							if (!isset($json["error"]) || $json["error"] == false) {
+
+								// AQUÍ COLOCAS EL CÓDIGO DE MONITOREO (línea 359)
+								if (isset($json['credits']) && isset($json['remainingCredents'])) {
+									error_log("PDF.co - Créditos usados: {$json['credits']}, Restantes: {$json['remainingCredits']}");
+								}
+								$jobId = $json["jobId"];
+
+								do {
+									$response = $this->CheckJobStatus($jobId, $apiKey);
+									
+									dep($response);
+									if ($response['status'] === "success") {
+										
+										$resultUrl = $response['url'];
+										$parsedJson = file_get_contents($resultUrl);
+										$data = json_decode($parsedJson, true);
+
+										dep($data);
+										exit;
+										$bancoParts = explode('.', $banco);
+										$bancoId = $bancoParts[0] ?? null;
+										$bancoPrefijo = $bancoParts[1] ?? null;
+
+										$movimientosFormat = [];
+										switch ($bancoPrefijo) {
+											//case 'SFT': $movimientosFormat = $this->bancoSofitasa($data); break;
+											//case 'BDT': $movimientosFormat = $this->bancoTesoro($data); break;
+											//case 'BCO': $movimientosFormat = $this->bancoBanesco($anio, $mes, $data); break;
+											//case 'VNZ': $movimientosFormat = $this->bancoVenezuela($data); break;
+											//case 'MRC': $movimientosFormat = $this->bancoMercantil($anio, $data); break;
+											//case 'BNC': $movimientosFormat = $this->bancoBnc($data); break;
+											case 'PRV': $movimientosFormat = $this->bancoProvincial($data); break;
+										}
+										
+										// Validación de estructura antes de acceder a ['mov']
+										if (!is_array($movimientosFormat) || !isset($movimientosFormat['mov']) || !is_array($movimientosFormat['mov'])) {
+											// Eliminar archivo temporal y responder error claro
+											unlink($uploadPath);
+											echo json_encode([
+												'status' => false,
+												'msg' => 'Banco/prefijo no soportado o no se obtuvieron movimientos del archivo (Excel). Prefijo: ' . (string)$bancoPrefijo
+											], JSON_UNESCAPED_UNICODE);
+											die();
+										}
+
+										$inserted = $this->model->insertTransaction($anio, $mes, $bancoId, $movimientosFormat['mov']);
+
+										// Eliminar archivo temporal
+										unlink($uploadPath);
+
+										if($inserted['status']){
+											if($inserted['error'] == 1){
+												$arrResponse = array('status' => false, 'msg' => 'Hubo un problema y no se subieron movimientos.' );
+											}else{
+												$arrResponse = array('status' => true, 'msg' => 'Se procesaron '.$inserted['total_processed'].' movimientos, Se insertaron '.$inserted['inserted'].' y se omitieron '.$inserted['duplicates_skipped'].'.');
+											}
+										}else{
+											$arrResponse = array('status' => false, 'msg' => 'Hubo un problema y no se subieron movimientos.' );
+										}
+									
+										echo json_encode($arrResponse,JSON_UNESCAPED_UNICODE);
+										die();
+
+									} elseif ($response['status'] === "working") {
+										sleep(3);
+									} elseif ($response['status'] === "failed") {
+										echo json_encode([
+											'success' => false,
+											'msg' => 'Error a leer el archivo bancario.'
+										]);
+										die();
+									} else {
+										break;
+									}
+								} while (true);
+							} else {
+								echo "<p>Error: " . $json["message"] . "</p>";
+							}
+						} else {
+							echo "<p>Status code: " . $status_code . "</p>";
+							echo "<p>" . $result . "</p>";
+						}
+					} else {
+						echo "Error: " . curl_error($curl);
+					}
+					curl_close($curl);
+
+					// Eliminar archivo si ocurrió algún error después de haberlo subido
+					if (file_exists($uploadPath)) {
+						unlink($uploadPath);
+					}
+			
 				
 			} else if($fileExt === 'txt'){
 				
@@ -760,57 +816,6 @@ class Transaccion extends Controllers{
 				];
 	}
 	
-	//PROCESO DE BANCO BICENTENARIO (PDF)
-	private function bancoBicentenario($fileUrl, $apiKey, $templateId)
-	{
-
-		// Puedes hacer un print_r si estás debuggeando:
-		$totalMovimientos = 0;
-
-		$movimientos = $this->requestPDFTemplate($fileUrl, $apiKey, $templateId);
-		$movimientos_transformados = [];
-		$totalMovimientos = 0;
-
-		
-
-		foreach ($movimientos as $item) {
-			// Validar que tenga los campos necesarios
-			if (empty($item['fecha']['value']) || empty($item['referencia']['value'])) {
-				continue; // Saltar si la fila no tiene datos clave
-			}
-
-			// Convertir fecha de DD-MM-YYYY a YYYY-MM-DD
-			$fechaObj = DateTime::createFromFormat('d-m-Y', $item['fecha']['value']);
-			$fecha = $fechaObj ? $fechaObj->format('Y-m-d') : null;
-
-			if (!$fechaObj) continue;
-
-
-			// Parsear montos europeos
-			$debit  = isset($item['débito']['value']) ? $this->parseEuropeanNumber($item['débito']['value']) : 0.0;
-			$credit = isset($item['crédito']['value']) ? $this->parseEuropeanNumber($item['crédito']['value']) : 0.0;
-
-			// Determinar monto (negativo si es débito)
-			$monto = $credit != 0.0 ? $credit : -$debit;
-
-			// Agregar movimiento transformado
-			$movimientos_transformados[] = [
-				'fecha'      => $fecha,
-				'referencia' => trim($item['referencia']['value']),
-				'monto'      => $monto
-			];
-
-			$totalMovimientos++;
-		}
-
-	
-
-		return [
-			'total' => $totalMovimientos,
-			'mov' => $movimientos_transformados
-		];
-	}
-	
 	//PROCESO DE BANCO TESORO (PDF)
 	private function bancoTesoro($data)
 	{	
@@ -847,51 +852,6 @@ class Transaccion extends Controllers{
 				'total' => $totalMovimientos,
 				'mov' => $movimientos_transformados
 				];
-	}
-	
-	//PROCESO DE BANCO BANCAMIGA (PDF)
-	private function bancoBancamiga($fileUrl, $apiKey, $templateId)
-	{
-
-		// Puedes hacer un print_r si estás debuggeando:
-		$totalMovimientos = 0;
-
-
-		$movimientos = $this->requestPDFTemplate($fileUrl, $apiKey, $templateId);
-		$movimientos_transformados = [];
-		$totalMovimientos = 0;
-
-		foreach ($movimientos as $item) {
-			// Validar que tenga los campos necesarios
-			if (empty($item['fecha']['value']) || empty($item['referencia']['value'])) {
-				continue; // Saltar si la fila no tiene datos clave
-			}
-
-			// Convertir fecha de DD-MM-YYYY a YYYY-MM-DD
-			$fechaObj = DateTime::createFromFormat('d-m-Y', $item['fecha']['value']);
-			$fecha = $fechaObj ? $fechaObj->format('Y-m-d') : null;
-
-			// Parsear montos europeos
-			$debit  = isset($item['débito']['value']) ? $this->parseEuropeanNumber($item['débito']['value']) : 0.0;
-			$credit = isset($item['crédito']['value']) ? $this->parseEuropeanNumber($item['crédito']['value']) : 0.0;
-
-			// Determinar monto (negativo si es débito)
-			$monto = $credit != 0.0 ? $credit : -$debit;
-
-			// Agregar movimiento transformado
-			$movimientos_transformados[] = [
-				'fecha'      => $fecha,
-				'referencia' => trim($item['referencia']['value']),
-				'monto'      => $monto
-			];
-
-			$totalMovimientos++;
-		}
-
-		return [
-			'total' => $totalMovimientos,
-			'mov' => $movimientos_transformados
-		];
 	}
 	
 	//PROCESO DE BANCO BANESCO (PDF)
@@ -2004,22 +1964,28 @@ class Transaccion extends Controllers{
 			// Asume que la primera fila son los encabezados
 			for ($i = 4; $i < count($rows); $i++) {
 				$fila = $rows[$i];
-
-				$fecha = DateTime::createFromFormat('d/m/Y', $fila[1])->format('Y-m-d');
 				
-				$debit = $this->parseEuropeanNumber($fila[5]);
-				$credit = $this->parseEuropeanNumber($fila[6]);
+				if($fila[1] == '' || $fila[1] == 'F. OPER.'){
+					continue;
+				}
+				$fecha = DateTime::createFromFormat('d-m-Y', $fila[1])->format('Y-m-d');
 
+				$debit = $this->parseEuropeanNumber($fila[14]);
+				$credit = $this->parseEuropeanNumber($fila[12]);
+
+				
 				if ($credit == 0) {
 					$monto = '-'.$debit;
 				} else {
+					dep($credit);
+					exit;
 					$monto = $credit;
 				}
 
 				// Ajusta los índices [0], [1], [2] según el orden de tus columnas
 				$movimientos_transformados[] = [
 					'fecha'      => $fecha,  // Ej: "2024-01-01"
-					'referencia' => $fila[2],  // Ej: "123456"
+					'referencia' => $fila[3],  // Ej: "123456"
 					'monto'      => $monto,  // Ej: "100.00"
 				];
 				
