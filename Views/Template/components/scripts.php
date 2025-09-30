@@ -56,7 +56,7 @@
         baseUrl: '<?= base_url() ?>',
         mediaUrl: '<?= media() ?>',
         currentUser: {
-            id: <?= $_SESSION['userData']['ID'] ?? 0 ?>,
+            id: <?= $_SESSION['idUser'] ?? 0 ?>,
             name: '<?= $_SESSION['userData']['NOMBRE'] ?? '' ?>',
             role: <?= $_SESSION['userData']['ID_ROL'] ?? 0 ?>
         },

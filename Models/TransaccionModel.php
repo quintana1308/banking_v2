@@ -488,7 +488,7 @@
 	private function generateIdInsert($anio, $mes, $banco, $movimiento, $sufijo = 1)
 	{
 		// Crear hash único basado en los datos del movimiento específico
-		$userId = $_SESSION['userData']['id'] ?? 0;
+		$userId = $_SESSION['idUser'] ?? 0;
 		$id_enterprise = $_SESSION['userData']['id_enterprise'] ?? 0;
 		
 		// Crear hash basado en fecha, referencia y monto del movimiento
@@ -507,6 +507,10 @@
 		//INSERTO LOS MOVIMIENTOS QUE OBTENGO DEL ARCHIVO SUBIDO POR EL CLIENTE
 	public function insertTransaction($anio, $mes, $banco, $movimientos)
 	{	
+
+		dep('no');
+		exit;
+
 		$errorInsert = 0;
 		$id_enterprise = $_SESSION['userData']['id_enterprise'];
 
@@ -1017,6 +1021,223 @@
 		}
 		// Si ya está en formato YYYY-MM-DD, mantener igual
 		return $fechaRecibida;
+	}
+
+	// ============================================
+	// FUNCIONES PARA LOGGING DE ARCHIVOS PDF
+	// ============================================
+
+	/**
+	 * CONSULTAR BALANCE ACTUAL DE CRÉDITOS EN PDF.CO
+	 * 
+	 * Realiza una consulta GET al endpoint de balance de PDF.co
+	 * para obtener los créditos disponibles antes de procesar un archivo.
+	 * 
+	 * @param string $apiKey Clave API de PDF.co
+	 * @return array|false Array con información del balance o false si hay error
+	 *   - remainingCredits: Créditos disponibles
+	 *   - otros campos según respuesta de la API
+	 */
+	public function getCurrentCreditsBalance($apiKey) 
+	{
+		// Inicializar cURL para consulta GET
+		$curl = curl_init();
+		
+		// Configurar opciones de cURL para consulta de balance
+		curl_setopt_array($curl, [
+			CURLOPT_URL => "https://api.pdf.co/v1/account/credit/balance", // Endpoint de balance
+			CURLOPT_RETURNTRANSFER => true,                                // Retornar respuesta como string
+			CURLOPT_HTTPHEADER => [
+				"x-api-key: " . $apiKey,                                   // Header de autenticación
+				"Content-Type: application/json"                           // Tipo de contenido
+			],
+			CURLOPT_TIMEOUT => 30                                          // Timeout de 30 segundos
+		]);
+		
+		// Ejecutar consulta
+		$response = curl_exec($curl);
+		$httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+		curl_close($curl);
+		
+		// Verificar si la consulta fue exitosa
+		if ($httpCode === 200 && $response !== false) {
+			return json_decode($response, true);
+		}
+		
+		// Error en la consulta
+		error_log("Error consultando balance PDF.co: HTTP $httpCode - Response: $response");
+		return false;
+	}
+
+	/**
+	 * INSERTAR NUEVO REGISTRO DE LOG DE ARCHIVO PDF
+	 * 
+	 * Crea un registro inicial en la tabla pdf_uploads_log cuando
+	 * se inicia el proceso de subida de un archivo PDF.
+	 * 
+	 * @param array $data Datos del archivo a registrar:
+	 *   - filename: Nombre del archivo
+	 *   - file_size: Tamaño en bytes
+	 *   - upload_date: Fecha de subida (Y-m-d)
+	 *   - upload_time: Hora de subida (H:i:s)
+	 *   - id_bank: ID del banco
+	 *   - bank_account: Cuenta bancaria (formato "id.prefijo")
+	 *   - id_enterprise: ID de la empresa
+	 *   - id_user: ID del usuario
+	 *   - tokens_iniciales: Créditos disponibles antes del procesamiento
+	 *   - status: Estado inicial (default: 'uploading')
+	 * @return int|false ID del registro insertado o false si hay error
+	 */
+	public function insertPdfUploadLog($data) 
+	{
+		// Preparar consulta SQL con placeholders para seguridad
+		$sql = "INSERT INTO pdf_uploads_log (
+					filename, file_size, upload_date, upload_time, 
+					id_bank, bank_account, id_enterprise, id_user, 
+					tokens_iniciales, status
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+		
+		// Preparar array de valores en el orden correcto
+		$values = [
+			$data['filename'],
+			$data['file_size'],
+			$data['upload_date'],
+			$data['upload_time'],
+			$data['id_bank'],
+			$data['bank_account'],
+			$data['id_enterprise'],
+			$data['id_user'],
+			$data['tokens_iniciales'] ?? 0,
+			$data['status'] ?? 'uploading'
+		];
+		
+		// Ejecutar inserción y retornar ID generado
+		$result = $this->insert($sql, $values);
+		
+		if ($result) {
+			// Obtener el ID del registro recién insertado
+			$lastId = $this->select("SELECT LAST_INSERT_ID() as id");
+			return $lastId['id'];
+		}
+		
+		return false;
+	}
+
+	/**
+	 * ACTUALIZAR REGISTRO EXISTENTE DE LOG DE ARCHIVO PDF
+	 * 
+	 * Actualiza un registro de log con nueva información durante
+	 * el procesamiento del archivo (job_id, tokens consumidos, etc.)
+	 * 
+	 * @param int $logId ID del registro a actualizar
+	 * @param array $data Datos a actualizar:
+	 *   - job_id: ID del trabajo en PDF.co
+	 *   - tokens_consumidos: Créditos gastados en esta operación
+	 *   - tokens_restantes: Créditos que quedaron después
+	 *   - processing_duration: Duración del procesamiento en segundos
+	 *   - page_count: Número de páginas procesadas
+	 *   - status: Nuevo estado ('processing', 'success', 'error')
+	 *   - api_response_url: URL de la respuesta de PDF.co
+	 *   - error_message: Mensaje de error si aplica
+	 * @return bool True si se actualizó correctamente, false si hay error
+	 */
+	public function updatePdfUploadLog($logId, $data) 
+	{
+		// Construir dinámicamente la consulta SQL según los campos recibidos
+		$setClauses = [];
+		$values = [];
+		
+		// Campos permitidos para actualización
+		$allowedFields = [
+			'job_id', 'tokens_consumidos', 'tokens_restantes', 
+			'processing_duration', 'page_count', 'status', 
+			'api_response_url', 'error_message'
+		];
+		
+		// Agregar solo los campos que están presentes en $data
+		foreach ($allowedFields as $field) {
+			if (isset($data[$field])) {
+				$setClauses[] = "$field = ?";
+				$values[] = $data[$field];
+			}
+		}
+		
+		// Verificar que hay campos para actualizar
+		if (empty($setClauses)) {
+			return false;
+		}
+		
+		// Agregar campo updated_at automáticamente
+		$setClauses[] = "updated_at = NOW()";
+		
+		// Construir consulta SQL completa
+		$sql = "UPDATE pdf_uploads_log SET " . implode(', ', $setClauses) . " WHERE id = ?";
+		$values[] = $logId; // Agregar ID al final para la cláusula WHERE
+		
+		// Ejecutar actualización
+		return $this->update($sql, $values);
+	}
+
+	/**
+	 * OBTENER REGISTROS DE LOG DE ARCHIVOS PDF
+	 * 
+	 * Consulta los registros de log filtrados por empresa del usuario actual.
+	 * Útil para mostrar historial de archivos procesados.
+	 * 
+	 * @param array $filters Filtros opcionales:
+	 *   - date_from: Fecha desde (Y-m-d)
+	 *   - date_to: Fecha hasta (Y-m-d)
+	 *   - status: Estado específico
+	 *   - user_id: ID de usuario específico
+	 * @return array Array de registros de log
+	 */
+	public function getPdfUploadLogs($filters = []) 
+	{
+		// Obtener ID de empresa del usuario actual
+		$id_enterprise = $_SESSION['userData']['id_enterprise'];
+		
+		// Consulta base con JOINs para obtener nombres legibles
+		$sql = "SELECT 
+					p.id, p.job_id, p.filename, p.file_size, 
+					p.upload_date, p.upload_time, p.tokens_iniciales, 
+					p.tokens_consumidos, p.tokens_restantes, p.processing_duration, 
+					p.page_count, p.status, p.error_message, p.created_at,
+					b.name as bank_name, 
+					u.name as user_name,
+					e.name as enterprise_name
+				FROM pdf_uploads_log p
+				LEFT JOIN banco b ON b.id = p.id_bank
+				LEFT JOIN usuario u ON u.id = p.id_user
+				LEFT JOIN empresa e ON e.id = p.id_enterprise
+				WHERE p.id_enterprise = ?";
+		
+		$values = [$id_enterprise];
+		
+		// Agregar filtros opcionales
+		if (!empty($filters['date_from'])) {
+			$sql .= " AND p.upload_date >= ?";
+			$values[] = $filters['date_from'];
+		}
+		
+		if (!empty($filters['date_to'])) {
+			$sql .= " AND p.upload_date <= ?";
+			$values[] = $filters['date_to'];
+		}
+		
+		if (!empty($filters['status'])) {
+			$sql .= " AND p.status = ?";
+			$values[] = $filters['status'];
+		}
+		
+		if (!empty($filters['user_id'])) {
+			$sql .= " AND p.id_user = ?";
+			$values[] = $filters['user_id'];
+		}
+		
+		// Ordenar por fecha más reciente primero
+		$sql .= " ORDER BY p.upload_date DESC, p.upload_time DESC";
+		
+		return $this->select_all($sql, $values);
 	}
 
 }

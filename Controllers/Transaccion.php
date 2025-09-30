@@ -344,123 +344,296 @@ class Transaccion extends Controllers{
 					die();
 				}
 
+				// ============================================
+				// PASO 1: INICIALIZAR LOGGING DE ARCHIVO PDF
+				// ============================================
+				
+				// Extraer información del banco y cuenta
+				$bancoParts = explode('.', $banco);
+				$bancoId = $bancoParts[0] ?? null;
+				$bancoPrefijo = $bancoParts[1] ?? null;
+				
+				// Configurar API Key de PDF.co desde configuración
+				$apiKey = $this->getPdfcoApiKey();
+
+				// PASO 1.1: Consultar balance inicial de créditos
+				$balanceInfo = $this->model->getCurrentCreditsBalance($apiKey);
+				$tokensIniciales = ($balanceInfo && isset($balanceInfo['remainingCredits'])) ? $balanceInfo['remainingCredits'] : 0;
+
+				// PASO 1.2: Crear registro inicial de log
+				$logData = [
+					'filename' => $archivo['name'],                          // Nombre original del archivo
+					'file_size' => $archivo['size'],                        // Tamaño en bytes
+					'upload_date' => date('Y-m-d'),                         // Fecha actual
+					'upload_time' => date('H:i:s'),                         // Hora actual
+					'id_bank' => $bancoId,                                  // ID del banco
+					'bank_account' => $banco,                               // Cuenta completa "id.prefijo"
+					'id_enterprise' => $_SESSION['userData']['id_enterprise'], // ID de la empresa
+					'id_user' => $_SESSION['idUser'],               // ID del usuario
+					'tokens_iniciales' => $tokensIniciales,                 // Créditos disponibles
+					'status' => 'uploading'                                 // Estado inicial
+				];
+
+				$logId = $this->model->insertPdfUploadLog($logData);
+				
+				if (!$logId) {
+					error_log("Error: No se pudo crear registro de log para archivo PDF");
+				}
+
+				// ============================================
+				// PASO 2: PROCESAR ARCHIVO CON PDF.CO
+				// ============================================
+				
 				$fileUrl = 'https://iabanking.apps-adn.com/EstadoDeCuenta.pdf';
+				$url = "https://api.pdf.co/v1/ai-invoice-parser";
+				$params = ["url" => $fileUrl];
+				
+				// Configurar cURL para envío a PDF.co
+				$curl = curl_init();
+				curl_setopt($curl, CURLOPT_HTTPHEADER, [
+					"x-api-key: $apiKey",
+					"Content-type: application/json"
+				]);
+				curl_setopt($curl, CURLOPT_URL, $url);
+				curl_setopt($curl, CURLOPT_POST, true);
+				curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+				curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($params));
 
-					// Aquí sigue tu lógica PDF.co:
-					//$apiKey = "adnlean.com@gmail.com_SfBGojnr2FuvXSWOHxuu8MzeyudrwopxbuyaxhvbWpUSXreGnto0giAxCbuucJGV";
-					$apiKey = "quintanaanthony7@gmail.com_b9WaxV2FmVU4oq3YEKxOc9zNyrjDy8xjg7o8nZoDmXrnd6ADsgwK36PJhMb97ILq";
-					$url = "https://api.pdf.co/v1/ai-invoice-parser";
-					$params = ["url" => $fileUrl];
-					$curl = curl_init();
-					curl_setopt($curl, CURLOPT_HTTPHEADER, [
-						"x-api-key: $apiKey",
-						"Content-type: application/json"
-					]);
-					curl_setopt($curl, CURLOPT_URL, $url);
-					curl_setopt($curl, CURLOPT_POST, true);
-					curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-					curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($params));
+				$result = curl_exec($curl);
 
-					$result = curl_exec($curl);
+				if (curl_errno($curl) === 0) {
+					$status_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
-					if (curl_errno($curl) === 0) {
-						$status_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+					if ($status_code == 200) {
+						$json = json_decode($result, true);
 
-						if ($status_code == 200) {
-							$json = json_decode($result, true);
+						if (!isset($json["error"]) || $json["error"] == false) {
 
-							if (!isset($json["error"]) || $json["error"] == false) {
-
-								// AQUÍ COLOCAS EL CÓDIGO DE MONITOREO (línea 359)
-								if (isset($json['credits']) && isset($json['remainingCredents'])) {
-									error_log("PDF.co - Créditos usados: {$json['credits']}, Restantes: {$json['remainingCredits']}");
+							// ============================================
+							// PASO 3: ACTUALIZAR LOG CON DATOS INICIALES
+							// ============================================
+							
+							// Actualizar log con job_id inicial (sin tokens del response)
+							if ($logId && isset($json['jobId'])) {
+								$updateData = [
+									'job_id' => $json['jobId'],
+									'status' => 'processing'
+								];
+								
+								// Solo agregar duración si está disponible
+								if (isset($json['duration'])) {
+									$updateData['processing_duration'] = $json['duration'];
 								}
-								$jobId = $json["jobId"];
-
-								do {
-									$response = $this->CheckJobStatus($jobId, $apiKey);
-									
-									dep($response);
-									if ($response['status'] === "success") {
-										
-										$resultUrl = $response['url'];
-										$parsedJson = file_get_contents($resultUrl);
-										$data = json_decode($parsedJson, true);
-
-										dep($data);
-										exit;
-										$bancoParts = explode('.', $banco);
-										$bancoId = $bancoParts[0] ?? null;
-										$bancoPrefijo = $bancoParts[1] ?? null;
-
-										$movimientosFormat = [];
-										switch ($bancoPrefijo) {
-											//case 'SFT': $movimientosFormat = $this->bancoSofitasa($data); break;
-											//case 'BDT': $movimientosFormat = $this->bancoTesoro($data); break;
-											//case 'BCO': $movimientosFormat = $this->bancoBanesco($anio, $mes, $data); break;
-											//case 'VNZ': $movimientosFormat = $this->bancoVenezuela($data); break;
-											//case 'MRC': $movimientosFormat = $this->bancoMercantil($anio, $data); break;
-											//case 'BNC': $movimientosFormat = $this->bancoBnc($data); break;
-											case 'PRV': $movimientosFormat = $this->bancoProvincial($data); break;
-										}
-										
-										// Validación de estructura antes de acceder a ['mov']
-										if (!is_array($movimientosFormat) || !isset($movimientosFormat['mov']) || !is_array($movimientosFormat['mov'])) {
-											// Eliminar archivo temporal y responder error claro
-											unlink($uploadPath);
-											echo json_encode([
-												'status' => false,
-												'msg' => 'Banco/prefijo no soportado o no se obtuvieron movimientos del archivo (Excel). Prefijo: ' . (string)$bancoPrefijo
-											], JSON_UNESCAPED_UNICODE);
-											die();
-										}
-
-										$inserted = $this->model->insertTransaction($anio, $mes, $bancoId, $movimientosFormat['mov']);
-
-										// Eliminar archivo temporal
-										unlink($uploadPath);
-
-										if($inserted['status']){
-											if($inserted['error'] == 1){
-												$arrResponse = array('status' => false, 'msg' => 'Hubo un problema y no se subieron movimientos.' );
-											}else{
-												$arrResponse = array('status' => true, 'msg' => 'Se procesaron '.$inserted['total_processed'].' movimientos, Se insertaron '.$inserted['inserted'].' y se omitieron '.$inserted['duplicates_skipped'].'.');
-											}
-										}else{
-											$arrResponse = array('status' => false, 'msg' => 'Hubo un problema y no se subieron movimientos.' );
-										}
-									
-										echo json_encode($arrResponse,JSON_UNESCAPED_UNICODE);
-										die();
-
-									} elseif ($response['status'] === "working") {
-										sleep(3);
-									} elseif ($response['status'] === "failed") {
-										echo json_encode([
-											'success' => false,
-											'msg' => 'Error a leer el archivo bancario.'
-										]);
-										die();
-									} else {
-										break;
-									}
-								} while (true);
-							} else {
-								echo "<p>Error: " . $json["message"] . "</p>";
+								
+								$this->model->updatePdfUploadLog($logId, $updateData);
 							}
-						} else {
-							echo "<p>Status code: " . $status_code . "</p>";
-							echo "<p>" . $result . "</p>";
-						}
-					} else {
-						echo "Error: " . curl_error($curl);
-					}
-					curl_close($curl);
+							
+							$jobId = $json["jobId"];
 
-					// Eliminar archivo si ocurrió algún error después de haberlo subido
-					if (file_exists($uploadPath)) {
-						unlink($uploadPath);
+							// ============================================
+							// PASO 4: MONITOREAR PROGRESO DEL TRABAJO
+							// ============================================
+							
+							do {
+								$response = $this->CheckJobStatus($jobId, $apiKey);
+								
+								if ($response['status'] === "success") {
+									
+									// ============================================
+									// PASO 5: PROCESAR DATOS EXITOSOS
+									// ============================================
+									
+									$resultUrl = $response['url'];
+									$parsedJson = file_get_contents($resultUrl);
+									$data = json_decode($parsedJson, true);
+
+									// PASO 5.1: Consultar balance final de créditos para mayor exactitud
+									$balanceInfoFinal = $this->model->getCurrentCreditsBalance($apiKey);
+									$tokensFinales = ($balanceInfoFinal && isset($balanceInfoFinal['remainingCredits'])) ? $balanceInfoFinal['remainingCredits'] : 0;
+									
+									// Calcular tokens consumidos con mayor precisión
+									$tokensConsumidos = max(0, $tokensIniciales - $tokensFinales);
+									
+									// PASO 5.2: Actualizar log con datos finales exitosos y tokens precisos
+									if ($logId) {
+										$finalUpdateData = [
+											'page_count' => $response['pageCount'] ?? 0,
+											'api_response_url' => $resultUrl,
+											'tokens_restantes' => $tokensFinales,
+											'tokens_consumidos' => $tokensConsumidos,
+											'status' => 'success'
+										];
+										$this->model->updatePdfUploadLog($logId, $finalUpdateData);
+									}
+
+									// PASO 5.3: Procesar movimientos según el banco
+									$movimientosFormat = [];
+									switch ($bancoPrefijo) {
+										//case 'SFT': $movimientosFormat = $this->bancoSofitasa($data); break;
+										case 'TSR': $movimientosFormat = $this->bancoTesoro($data); break;
+										//case 'BCO': $movimientosFormat = $this->bancoBanesco($anio, $mes, $data); break;
+										//case 'VNZ': $movimientosFormat = $this->bancoVenezuela($data); break;
+										//case 'MRC': $movimientosFormat = $this->bancoMercantil($anio, $data); break;
+										//case 'BNC': $movimientosFormat = $this->bancoBnc($data); break;
+										case 'PRV': $movimientosFormat = $this->bancoProvincial($data); break;
+
+									}
+									
+									// PASO 5.4: Validar estructura de movimientos
+									if (!is_array($movimientosFormat) || !isset($movimientosFormat['mov']) || !is_array($movimientosFormat['mov'])) {
+										// Consultar balance final incluso en caso de error para registro preciso
+										$balanceInfoFinal = $this->model->getCurrentCreditsBalance($apiKey);
+										$tokensFinales = ($balanceInfoFinal && isset($balanceInfoFinal['remainingCredits'])) ? $balanceInfoFinal['remainingCredits'] : 0;
+										$tokensConsumidos = max(0, $tokensIniciales - $tokensFinales);
+										
+										// Actualizar log con error de estructura y tokens precisos
+										if ($logId) {
+											$this->model->updatePdfUploadLog($logId, [
+												'tokens_restantes' => $tokensFinales,
+												'tokens_consumidos' => $tokensConsumidos,
+												'status' => 'error',
+												'error_message' => 'Banco/prefijo no soportado o estructura de datos inválida. Prefijo: ' . (string)$bancoPrefijo
+											]);
+										}
+										
+										unlink($uploadPath);
+										echo json_encode([
+											'status' => false,
+											'msg' => 'Banco/prefijo no soportado o no se obtuvieron movimientos del archivo PDF. Prefijo: ' . (string)$bancoPrefijo
+										], JSON_UNESCAPED_UNICODE);
+										die();
+									}
+
+									// PASO 5.5: Insertar movimientos en la base de datos
+									$inserted = $this->model->insertTransaction($anio, $mes, $bancoId, $movimientosFormat['mov']);
+
+									// Eliminar archivo temporal
+									unlink($uploadPath);
+
+									// PASO 5.6: Preparar respuesta final
+									if($inserted['status']){
+										if($inserted['error'] == 1){
+											$arrResponse = array('status' => false, 'msg' => 'Hubo un problema y no se subieron movimientos.' );
+										}else{
+											$arrResponse = array('status' => true, 'msg' => 'Se procesaron '.$inserted['total_processed'].' movimientos, Se insertaron '.$inserted['inserted'].' y se omitieron '.$inserted['duplicates_skipped'].'.');
+										}
+									}else{
+										$arrResponse = array('status' => false, 'msg' => 'Hubo un problema y no se subieron movimientos.' );
+									}
+								
+									echo json_encode($arrResponse,JSON_UNESCAPED_UNICODE);
+									die();
+
+								} elseif ($response['status'] === "working") {
+									// Trabajo aún en progreso, esperar antes de verificar nuevamente
+									sleep(3);
+									
+								} elseif ($response['status'] === "failed") {
+									// ============================================
+									// MANEJO DE ERROR: TRABAJO FALLIDO
+									// ============================================
+									
+									// Consultar balance final para registro preciso incluso en fallo
+									$balanceInfoFinal = $this->model->getCurrentCreditsBalance($apiKey);
+									$tokensFinales = ($balanceInfoFinal && isset($balanceInfoFinal['remainingCredits'])) ? $balanceInfoFinal['remainingCredits'] : 0;
+									$tokensConsumidos = max(0, $tokensIniciales - $tokensFinales);
+									
+									// Actualizar log con error de procesamiento y tokens precisos
+									if ($logId) {
+										$this->model->updatePdfUploadLog($logId, [
+											'tokens_restantes' => $tokensFinales,
+											'tokens_consumidos' => $tokensConsumidos,
+											'status' => 'error',
+											'error_message' => 'Error en PDF.co: Trabajo fallido durante el procesamiento'
+										]);
+									}
+									
+									echo json_encode([
+										'success' => false,
+										'msg' => 'Error al leer el archivo bancario.'
+									]);
+									die();
+									
+								} else {
+									// Estado desconocido, salir del bucle
+									break;
+								}
+							} while (true);
+							
+						} else {
+							// ============================================
+							// MANEJO DE ERROR: RESPUESTA CON ERROR DE API
+							// ============================================
+							
+							// Consultar balance final para registro preciso incluso con error de API
+							$balanceInfoFinal = $this->model->getCurrentCreditsBalance($apiKey);
+							$tokensFinales = ($balanceInfoFinal && isset($balanceInfoFinal['remainingCredits'])) ? $balanceInfoFinal['remainingCredits'] : 0;
+							$tokensConsumidos = max(0, $tokensIniciales - $tokensFinales);
+							
+							// Actualizar log con error de API y tokens precisos
+							if ($logId) {
+								$errorMessage = isset($json["message"]) ? $json["message"] : "Error desconocido en API";
+								$this->model->updatePdfUploadLog($logId, [
+									'tokens_restantes' => $tokensFinales,
+									'tokens_consumidos' => $tokensConsumidos,
+									'status' => 'error',
+									'error_message' => 'Error de API PDF.co: ' . $errorMessage
+								]);
+							}
+							
+							echo json_encode([
+								'status' => false,
+								'msg' => 'Error en la API de procesamiento: ' . (isset($json["message"]) ? $json["message"] : "Error desconocido")
+							], JSON_UNESCAPED_UNICODE);
+							die();
+						}
+						
+					} else {
+						// ============================================
+						// MANEJO DE ERROR: CÓDIGO HTTP INCORRECTO
+						// ============================================
+						
+						// Actualizar log con error HTTP
+						if ($logId) {
+							$this->model->updatePdfUploadLog($logId, [
+								'status' => 'error',
+								'error_message' => "Error HTTP $status_code en PDF.co"
+							]);
+						}
+						
+						echo json_encode([
+							'status' => false,
+							'msg' => "Error del servidor de procesamiento (HTTP $status_code)"
+						], JSON_UNESCAPED_UNICODE);
+						die();
 					}
+					
+				} else {
+					// ============================================
+					// MANEJO DE ERROR: ERROR DE CURL
+					// ============================================
+					
+					// Actualizar log con error de conexión
+					if ($logId) {
+						$this->model->updatePdfUploadLog($logId, [
+							'status' => 'error',
+							'error_message' => 'Error de conexión cURL: ' . curl_error($curl)
+						]);
+					}
+					
+					echo json_encode([
+						'status' => false,
+						'msg' => 'Error de conexión con el servicio de procesamiento'
+					], JSON_UNESCAPED_UNICODE);
+					die();
+				}
+				
+				curl_close($curl);
+
+				// Eliminar archivo si ocurrió algún error después de haberlo subido
+				if (file_exists($uploadPath)) {
+					unlink($uploadPath);
+				}
 			
 				
 			} else if($fileExt === 'txt'){
@@ -827,14 +1000,20 @@ class Transaccion extends Controllers{
 	
 	//PROCESO DE BANCO TESORO (PDF)
 	private function bancoTesoro($data)
-	{	
+	{	dep($data);
+		exit;
 		// Puedes hacer un print_r si estás debuggeando:
 		$movimientos = $data['transactions'];
 		$movimientos_transformados = [];
 		$totalMovimientos = 0;
 		
+		
+
 		foreach ($movimientos as $key => $item) {
 			
+			if($item['operation_date'] == ''){
+				continue;
+			}
 			// Convertir fecha de DD/MM/YYYY a YYYY-MM-DD
 			$fecha = DateTime::createFromFormat('d/m/Y', $item['date'])->format('Y-m-d');
 			// Limpiar y convertir a número float para poder comparar correctamente
