@@ -48,8 +48,14 @@ class Enterprise extends Controllers{
 		$bd = $_POST['bd'] ?? null;
 		$rif = $_POST['rif'] ?? null;
 		$token = $_POST['token'] ?? null;
+		
+		// Solo los administradores pueden modificar permisos PDF
+		$pdf_upload_enabled = null;
+		if (isset($_POST['pdf_upload_enabled']) && $_SESSION['userData']['ID_ROL'] == 1) {
+			$pdf_upload_enabled = (int)$_POST['pdf_upload_enabled'];
+		}
 
-		$response = $this->model->updateEnterprise($id, $name, $bd, $rif, $token);
+		$response = $this->model->updateEnterprise($id, $name, $bd, $rif, $token, $pdf_upload_enabled);
 		if($response){
 			echo json_encode([
 				'status' => true,

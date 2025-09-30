@@ -186,15 +186,15 @@ ob_start();
                                                 <h6 class="file-upload-title">Arrastra tu archivo aquí</h6>
                                                 <p class="file-upload-subtitle">o haz clic para seleccionar</p>
                                                 <div class="file-upload-formats">
-                                                    Formatos soportados: .xlsx, .xls, .csv
+                                                    Formatos soportados: .pdf, .xlsx, .xls, .csv
                                                 </div>
                                             </div>
                                             <input type="file" class="file-input-hidden" name="archive" id="archive" 
-                                                   accept=".xlsx,.xls,.csv" required>
+                                                   accept=".pdf,.xlsx,.xls,.csv" required>
                                         </div>
                                         <div class="file-preview d-none" id="filePreview">
                                             <div class="file-info">
-                                                <i class="fas fa-file-excel file-icon"></i>
+                                                <i class="fas fa-file file-icon" id="fileIcon" style="color: #95a5a6;"></i>
                                                 <div class="file-details">
                                                     <div class="file-name" id="fileName"></div>
                                                     <div class="file-size" id="fileSize"></div>
@@ -238,7 +238,7 @@ ob_start();
                         </div>
                         <div class="info-content">
                             <h6>Formatos Soportados</h6>
-                            <p>Excel (.xlsx, .xls) y CSV</p>
+                            <p>PDF, Excel (.xlsx, .xls) y CSV</p>
                         </div>
                     </div>
                 </div>
@@ -313,13 +313,45 @@ document.addEventListener('DOMContentLoaded', function() {
         const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
         
         if (!allowedTypes.includes(fileExtension)) {
-            showError('messageArchive', 'Formato de archivo no válido. Solo se permiten archivos Excel (.xlsx, .xls) y CSV.');
+            showError('messageArchive', 'Formato de archivo no válido. Solo se permiten archivos PDF, Excel (.xlsx, .xls) y CSV.');
             return;
         }
 
         // Show file preview
         fileName.textContent = file.name;
         fileSize.textContent = formatFileSize(file.size);
+        
+        // Update file icon based on file type
+        const fileIcon = document.getElementById('fileIcon');
+        
+        console.log('File extension detected:', fileExtension); // Debug
+        console.log('File name:', file.name); // Debug
+        
+        // Clear all existing classes and set base
+        fileIcon.className = 'fas file-icon';
+        
+        if (fileExtension === '.pdf') {
+            // Use simple document icon for PDF with red color
+            fileIcon.classList.add('fa-file-alt');
+            fileIcon.style.color = '#e74c3c'; // Red color for PDF
+            console.log('Setting PDF icon (fa-file-alt)'); // Debug
+        } else if (fileExtension === '.xlsx' || fileExtension === '.xls') {
+            // Use table icon for Excel files
+            fileIcon.classList.add('fa-table');
+            fileIcon.style.color = '#27ae60'; // Green color for Excel
+            console.log('Setting Excel icon (fa-table)'); // Debug
+        } else if (fileExtension === '.csv') {
+            // Use list icon for CSV files
+            fileIcon.classList.add('fa-list-alt');
+            fileIcon.style.color = '#3498db'; // Blue color for CSV
+            console.log('Setting CSV icon (fa-list-alt)'); // Debug
+        } else {
+            // Fallback for unknown types
+            fileIcon.classList.add('fa-file');
+            fileIcon.style.color = '#95a5a6'; // Gray color for unknown
+            console.log('Setting generic file icon'); // Debug
+        }
+        
         fileDropZone.style.display = 'none';
         filePreview.classList.remove('d-none');
         
@@ -331,6 +363,11 @@ document.addEventListener('DOMContentLoaded', function() {
         fileInput.value = '';
         fileDropZone.style.display = 'block';
         filePreview.classList.add('d-none');
+        
+        // Reset file icon to default
+        const fileIcon = document.getElementById('fileIcon');
+        fileIcon.className = 'fas fa-file file-icon';
+        fileIcon.style.color = '#95a5a6';
     });
 
     function formatFileSize(bytes) {
@@ -417,6 +454,13 @@ function resetForm() {
     document.getElementById('formNewTransaction').reset();
     document.getElementById('fileDropZone').style.display = 'block';
     document.getElementById('filePreview').classList.add('d-none');
+    
+    // Reset file icon to default
+    const fileIcon = document.getElementById('fileIcon');
+    if (fileIcon) {
+        fileIcon.className = 'fas fa-file file-icon';
+        fileIcon.style.color = '#95a5a6';
+    }
     
     // Hide all error messages
     document.querySelectorAll('.invalid-feedback-futuristic').forEach(error => {

@@ -1240,5 +1240,23 @@
 		return $this->select_all($sql, $values);
 	}
 
+	/**
+	 * VERIFICAR PERMISOS DE SUBIDA PDF POR EMPRESA
+	 * 
+	 * Valida si una empresa específica tiene permisos habilitados
+	 * para subir archivos PDF al sistema.
+	 * 
+	 * @param int $id_enterprise ID de la empresa a verificar
+	 * @return bool true si tiene permisos, false si no los tiene
+	 */
+	public function checkPdfUploadPermission($id_enterprise)
+	{
+		$sql = "SELECT pdf_upload_enabled FROM empresa WHERE id = $id_enterprise AND status = 1";
+		$request = $this->select($sql);
+		
+		// Retorna true solo si la empresa existe, está activa y tiene permisos habilitados
+		return ($request && isset($request['pdf_upload_enabled']) && $request['pdf_upload_enabled'] == 1);
+	}
+
 }
 ?>

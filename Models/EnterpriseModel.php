@@ -5,20 +5,16 @@
 	class EnterpriseModel extends Mysql
 	{	
 
-
 		public function __construct()
 		{
 			parent::__construct();
-			
 		}
 	
 		//OBTENER TODAS LAS EMPRESAS
 		public function getEnterprises()
 		{
 			$sql = "SELECT * FROM empresa";
-
 			$request = $this->select_all($sql);
-
 			return $request;
 		}
 
@@ -31,11 +27,14 @@
 		}
 
 		//ACTUALIZAR UNA EMPRESA 
-		public function updateEnterprise($id, $name, $bd, $rif, $token)
+		public function updateEnterprise($id, $name, $bd, $rif, $token, $pdf_upload_enabled = null)
 		{	
-			$sql = "UPDATE empresa SET `name` = ?, bd = ?, rif = ?, token = ?
+			// Incluir campo pdf_upload_enabled si se proporciona
+			$sql = "UPDATE empresa SET `name` = ?, bd = ?, rif = ?, token = ?, pdf_upload_enabled = ?
 					WHERE id = ?";
-			$valueArray = array($name, $bd, $rif, $token, $id);
+			$valueArray = array($name, $bd, $rif, $token, $pdf_upload_enabled, $id);
+
+			
 			$request = $this->update($sql, $valueArray);
 			return $request;
 		}
@@ -66,10 +65,8 @@
 			}else{
 				return $request;
 			}
-			
 		}
 
 	}	
-
 
 ?>

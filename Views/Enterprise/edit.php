@@ -131,6 +131,40 @@ ob_start();
                             </div>
                         </div>
                     </div>
+                    
+                    <?php if($_SESSION['userData']['ID_ROL'] == 1): // Solo administradores ?>
+                    <div class="col-md-12" id="pdf_permissions">
+                        <div class="form-group">
+                            <div class="futuristic-card-compact mt-3" style="background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.3);">
+                                <div class="card-body p-3">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-file-alt me-3" style="color: #e74c3c; font-size: 1.2em;"></i>
+                                            <div>
+                                                <label class="form-label mb-1" style="color: #667eea; font-weight: 600;">
+                                                    Permisos de Subida PDF
+                                                </label>
+                                                <small class="text-muted d-block">
+                                                    Controla si esta empresa puede subir archivos PDF al sistema
+                                                </small>
+                                            </div>
+                                        </div>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" name="pdf_upload_enabled" id="pdf_upload_enabled" 
+                                                   value="1" <?= (isset($data['enterprise']['pdf_upload_enabled']) && $data['enterprise']['pdf_upload_enabled'] == 1) ? 'checked' : '' ?>
+                                                   style="transform: scale(1.2);">
+                                            <label class="form-check-label" for="pdf_upload_enabled" style="color: #667eea;">
+                                                <span id="pdf_status_text">
+                                                    <?= (isset($data['enterprise']['pdf_upload_enabled']) && $data['enterprise']['pdf_upload_enabled'] == 1) ? 'Habilitado' : 'Deshabilitado' ?>
+                                                </span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endif; ?>
                 </div>
                 <div class="d-flex justify-content-end mt-4">
                     <button type="submit" class="btn btn-primary">
@@ -158,6 +192,20 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }, 1500);
     });
+    
+    // Manejar cambio en el switch de permisos PDF
+    const pdfSwitch = document.getElementById('pdf_upload_enabled');
+    const pdfStatusText = document.getElementById('pdf_status_text');
+    
+    if (pdfSwitch && pdfStatusText) {
+        pdfSwitch.addEventListener('change', function() {
+            pdfStatusText.textContent = this.checked ? 'Habilitado' : 'Deshabilitado';
+            pdfStatusText.style.color = this.checked ? '#27ae60' : '#e74c3c';
+        });
+        
+        // Establecer color inicial
+        pdfStatusText.style.color = pdfSwitch.checked ? '#27ae60' : '#e74c3c';
+    }
 });
 </script>
 

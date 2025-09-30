@@ -353,6 +353,26 @@ class Transaccion extends Controllers{
 				$bancoId = $bancoParts[0] ?? null;
 				$bancoPrefijo = $bancoParts[1] ?? null;
 				
+				// ============================================
+				// VALIDAR PERMISOS DE SUBIDA PDF POR EMPRESA
+				// ============================================
+				
+				$id_enterprise = $_SESSION['userData']['id_enterprise'];
+				$empresaPermisos = $this->model->checkPdfUploadPermission($id_enterprise);
+
+				if (!$empresaPermisos) {
+					// Eliminar archivo subido ya que no tiene permisos
+					if (file_exists($uploadPath)) {
+						unlink($uploadPath);
+					}
+					
+					echo json_encode([
+						'status' => false, 
+						'msg' => 'Su empresa no tiene permisos para subir archivos PDF. Contacte al administrador del sistema.'
+					], JSON_UNESCAPED_UNICODE);
+					die();
+				}
+
 				// Configurar API Key de PDF.co desde configuración
 				$apiKey = $this->getPdfcoApiKey();
 
