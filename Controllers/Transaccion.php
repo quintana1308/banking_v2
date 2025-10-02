@@ -1020,14 +1020,11 @@ class Transaccion extends Controllers{
 	
 	//PROCESO DE BANCO TESORO (PDF)
 	private function bancoTesoro($data)
-	{	dep($data);
-		exit;
+	{	
 		// Puedes hacer un print_r si estás debuggeando:
 		$movimientos = $data['transactions'];
 		$movimientos_transformados = [];
 		$totalMovimientos = 0;
-		
-		
 
 		foreach ($movimientos as $key => $item) {
 			
@@ -1056,6 +1053,43 @@ class Transaccion extends Controllers{
 			$totalMovimientos++;
 		}
 		
+		return [
+				'total' => $totalMovimientos,
+				'mov' => $movimientos_transformados
+				];
+	}
+
+	//PROCESO DE BANCO PROVINCIAL (PDF)
+	private function bancoProvincial($data)
+	{
+		// Puedes hacer un print_r si estás debuggeando:
+		$movimientos = $data['account_statement']['transactions'];
+		$movimientos_transformados = [];
+		$totalMovimientos = 0;
+		
+		foreach ($movimientos as $key => $item) {
+			// Convertir fecha de DD/MM/YYYY a YYYY-MM-DD
+			$fecha = DateTime::createFromFormat('d-m-Y', $item['operation_date'])->format('Y-m-d');
+			// Limpiar y convertir a número float para poder comparar correctamente
+			$debit = $this->parseEuropeanNumber($item['charges']);
+			$credit = $this->parseEuropeanNumber($item['credits']);
+			
+			// Determinar el monto correcto
+			if (empty($credit)) {
+				$monto = '-'.$debit;
+			} else {
+				$monto = $credit;
+			}
+
+			$movimientos_transformados[] = [
+				'fecha'      => $fecha,
+				'referencia' => $item['reference'],
+				'monto'      => $monto, // O 'credit' si prefieres según la lógica
+			];
+				
+				$totalMovimientos++;
+			}
+	
 		return [
 				'total' => $totalMovimientos,
 				'mov' => $movimientos_transformados
@@ -1352,44 +1386,6 @@ class Transaccion extends Controllers{
 				'mov' => $movimientos_transformados
 				];
 	}
-	
-	//PROCESO DE BANCO PROVINCIAL (PDF)
-	private function bancoProvincial($data)
-	{
-		// Puedes hacer un print_r si estás debuggeando:
-		$movimientos = $data['account_statement']['transactions'];
-		$movimientos_transformados = [];
-		$totalMovimientos = 0;
-		
-		foreach ($movimientos as $key => $item) {
-			// Convertir fecha de DD/MM/YYYY a YYYY-MM-DD
-			$fecha = DateTime::createFromFormat('d-m-Y', $item['operation_date'])->format('Y-m-d');
-			// Limpiar y convertir a número float para poder comparar correctamente
-			$debit = $this->parseEuropeanNumber($item['charges']);
-			$credit = $this->parseEuropeanNumber($item['credits']);
-			
-			// Determinar el monto correcto
-			if (empty($credit)) {
-				$monto = '-'.$debit;
-			} else {
-				$monto = $credit;
-			}
-
-			$movimientos_transformados[] = [
-				'fecha'      => $fecha,
-				'referencia' => $item['reference'],
-				'monto'      => $monto, // O 'credit' si prefieres según la lógica
-			];
-			
-			$totalMovimientos++;
-		}
-
-		return [
-				'total' => $totalMovimientos,
-				'mov' => $movimientos_transformados
-				];
-	}	
-	
 
 	//------ PROCESO ARCHIVOS EN EXCEL -------//
 
