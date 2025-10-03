@@ -507,10 +507,6 @@
 		//INSERTO LOS MOVIMIENTOS QUE OBTENGO DEL ARCHIVO SUBIDO POR EL CLIENTE
 	public function insertTransaction($anio, $mes, $banco, $movimientos)
 	{	
-
-		dep('no');
-		exit;
-
 		$errorInsert = 0;
 		$id_enterprise = $_SESSION['userData']['id_enterprise'];
 

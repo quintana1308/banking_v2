@@ -1701,11 +1701,15 @@ class Transaccion extends Controllers{
 		$totalMovimientos = 0;
 		
 		// Asume que la primera fila son los encabezados
-		for ($i = 7; $i < count($rows); $i++) {
+		for ($i = 6; $i < count($rows); $i++) {
 			$fila = $rows[$i];
 			
+			if ($fila[2] == 'Descripción') {
+				continue; 
+			}
+
 			if ($fila[2] == 'SALDO INICIAL') {
-				break; // Termina el ciclo si la fecha está vacía
+				break; 
 			}
 
 			$fecha = DateTime::createFromFormat('d/m/Y', $fila[0])->format('Y-m-d');
@@ -1730,7 +1734,6 @@ class Transaccion extends Controllers{
 	//PROCESO DE BANCO MERCANTIL CASO 3 (EXCEL)
 	private function processMercantilExcel3($rows)
 	{	
-
 		$movimientos_transformados = [];
 		$totalMovimientos = 0;	
 		// Asume que la primera fila son los encabezados
@@ -1760,7 +1763,6 @@ class Transaccion extends Controllers{
 			
 			$totalMovimientos++;
 		}
-
 		return [
 				'total' => $totalMovimientos,
 				'mov' => $movimientos_transformados
