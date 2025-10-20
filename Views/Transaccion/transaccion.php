@@ -74,7 +74,7 @@ ob_start();
                 </div>
                 <div class="card-body p-4">
                     <div class="row g-3">
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <div class="form-group-futuristic">
                                 <label class="form-label-futuristic">
                                     <i class="fas fa-university me-2"></i>
@@ -88,7 +88,7 @@ ob_start();
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <div class="form-group-futuristic">
                                 <label class="form-label-futuristic">
                                     <i class="fas fa-credit-card me-2"></i>
@@ -122,6 +122,18 @@ ob_start();
                                 </label>
                                 <div class="input-container">
                                     <input type="month" id="filtroDate" class="form-control-futuristic">
+                                    <div class="input-border"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group-futuristic">
+                                <label class="form-label-futuristic">
+                                    <i class="fas fa-dollar-sign me-2"></i>
+                                    Monto
+                                </label>
+                                <div class="input-container">
+                                    <input type="text" id="filtroMonto" class="form-control-futuristic" placeholder="Ej: 3139, 3.139,85, 3139.85">
                                     <div class="input-border"></div>
                                 </div>
                             </div>

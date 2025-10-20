@@ -70,6 +70,30 @@
 				}
 			}
 
+			// 👇 FILTRO POR MONTO
+			if (!empty($filters['monto'])) {
+				$montoInput = trim($filters['monto']);
+				
+				// Limpiar el input: remover puntos de miles y reemplazar comas por puntos
+				$montoLimpio = str_replace(['.', ','], ['', '.'], $montoInput);
+				
+				// Si el input contiene solo dígitos y puntos/comas, hacer búsqueda flexible
+				if (preg_match('/^[\d\.,]+$/', $montoInput)) {
+					// Crear patrón para búsqueda flexible
+					$patron = str_replace(['.', ','], '', $montoInput); // Solo números
+					
+					// Buscar en el campo amount convertido a string sin formato
+					$where .= " AND (
+						REPLACE(REPLACE(CAST(ABS(m.amount) AS CHAR), '.', ''), ',', '') LIKE '%$patron%'
+						OR CAST(m.amount AS CHAR) LIKE '%$montoLimpio%'
+						OR CAST(ABS(m.amount) AS CHAR) LIKE '%$montoLimpio%'
+					)";
+				} else {
+					// Si no es un patrón numérico, buscar como texto en el campo amount
+					$where .= " AND CAST(m.amount AS CHAR) LIKE '%$montoInput%'";
+				}
+			}
+
 			// Obtener los IDs de los bancos que pertenecen a la empresa del usuario
 			/*$sqlBanks = "SELECT id_bank FROM banco WHERE id_enterprise = $id_enterprise";
 			$requestBanks = $this->select_all($sqlBanks);

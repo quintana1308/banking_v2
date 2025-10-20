@@ -49,6 +49,7 @@ class Transaccion extends Controllers{
 			'reference'=> $_GET['reference']?? '',
 			'date'     => $_GET['date']     ?? '',
 			'estado'   => $_GET['estado']    ?? '',
+			'monto'    => $_GET['monto']     ?? '',
 		];
 
 		$arrData = $this->model->getTransaction($filters);
@@ -404,7 +405,10 @@ class Transaccion extends Controllers{
 				// PASO 2: PROCESAR ARCHIVO CON PDF.CO
 				// ============================================
 				
-				$fileUrl = 'https://iabanking.apps-adn.com/EstadoDeCuenta.pdf';
+				// Generar URL pública del archivo subido para que PDF.co pueda accederlo
+				$baseUrl = rtrim(base_url(), '/');
+				$fileUrl = $baseUrl . '/' . $fileName;
+				
 				$url = "https://api.pdf.co/v1/ai-invoice-parser";
 				$params = ["url" => $fileUrl];
 				
@@ -489,7 +493,7 @@ class Transaccion extends Controllers{
 									// PASO 5.3: Procesar movimientos según el banco
 									$movimientosFormat = [];
 									switch ($bancoPrefijo) {
-										//case 'SFT': $movimientosFormat = $this->bancoSofitasa($data); break;
+										case 'BCR': $movimientosFormat = $this->bancoBancaribe($data); break;
 										case 'TSR': $movimientosFormat = $this->bancoTesoro($data); break;
 										//case 'BCO': $movimientosFormat = $this->bancoBanesco($anio, $mes, $data); break;
 										//case 'VNZ': $movimientosFormat = $this->bancoVenezuela($data); break;
@@ -568,6 +572,11 @@ class Transaccion extends Controllers{
 										]);
 									}
 									
+									// Eliminar archivo temporal
+									if (file_exists($uploadPath)) {
+										unlink($uploadPath);
+									}
+									
 									echo json_encode([
 										'success' => false,
 										'msg' => 'Error al leer el archivo bancario.'
@@ -601,6 +610,11 @@ class Transaccion extends Controllers{
 								]);
 							}
 							
+							// Eliminar archivo temporal
+							if (file_exists($uploadPath)) {
+								unlink($uploadPath);
+							}
+							
 							echo json_encode([
 								'status' => false,
 								'msg' => 'Error en la API de procesamiento: ' . (isset($json["message"]) ? $json["message"] : "Error desconocido")
@@ -621,6 +635,11 @@ class Transaccion extends Controllers{
 							]);
 						}
 						
+						// Eliminar archivo temporal
+						if (file_exists($uploadPath)) {
+							unlink($uploadPath);
+						}
+						
 						echo json_encode([
 							'status' => false,
 							'msg' => "Error del servidor de procesamiento (HTTP $status_code)"
@@ -639,6 +658,11 @@ class Transaccion extends Controllers{
 							'status' => 'error',
 							'error_message' => 'Error de conexión cURL: ' . curl_error($curl)
 						]);
+					}
+					
+					// Eliminar archivo temporal
+					if (file_exists($uploadPath)) {
+						unlink($uploadPath);
 					}
 					
 					echo json_encode([
@@ -980,12 +1004,54 @@ class Transaccion extends Controllers{
 	}
 	
 	//------ PROCESO ARCHIVOS EN PDF -------//
+	//PROCESO DE BANCO BANCARIBE (PDF)
+	private function bancoBancaribe($data)
+	{	
+		dep($data);
+		exit;
+		// Puedes hacer un print_r si estás debuggeando:
+		$movimientos = $data['transactions'];
+		$movimientos_transformados = [];
+		$totalMovimientos = 0;
 
+		foreach ($movimientos as $key => $item) {
+			
+			if($item['operation_date'] == ''){
+				continue;
+			}
+			// Convertir fecha de DD/MM/YYYY a YYYY-MM-DD
+			$fecha = DateTime::createFromFormat('d-M-Y', $item['date'])->format('Y-m-d');
+			// Limpiar y convertir a número float para poder comparar correctamente
+			$debit = $this->parseEuropeanNumber($item['debit']);
+			$credit = $this->parseEuropeanNumber($item['credit']);
+
+			// Determinar el monto correcto
+			if ($credit == 0.00) {
+				$monto = '-'.$debit;
+			} else {
+				$monto = $credit;
+			}
+
+			$movimientos_transformados[] = [
+				'fecha'      => $fecha,
+				'referencia' => $item['reference'],
+				'monto'      => $monto, // O 'credit' si prefieres según la lógica
+			];
+			
+			$totalMovimientos++;
+		}
+		
+		return [
+				'total' => $totalMovimientos,
+				'mov' => $movimientos_transformados
+				];
+	}
+	
 	//PROCESO DE BANCO SOFITASA (PDF)
 	private function bancoSofitasa($data)
 	{
 		// Puedes hacer un print_r si estás debuggeando:
-		$movimientos = $data['transactions'];
+		$movimientos = $data['account_statement']['transactions'];
 		$movimientos_transformados = [];
 		$totalMovimientos = 0;
 		
@@ -1837,7 +1903,7 @@ class Transaccion extends Controllers{
 			$spreadsheet = IOFactory::load($filePath);
 			$sheet = $spreadsheet->getActiveSheet();
 			$rows = $sheet->toArray();
-
+			
 			$movimientos_transformados = [];
 			$totalMovimientos = 0;
 

@@ -44,6 +44,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 d.reference = $('#filtroReference').val();
                 d.date = $('#filtroDate').val();
                 d.estado = $('#filtroEstado').val();
+                d.monto = $('#filtroMonto').val();
             }
         },
         "deferLoading": 0,
@@ -283,8 +284,8 @@ document.addEventListener('DOMContentLoaded', function () {
         tableTransaction.ajax.reload();
     });
 
-    // Filtro de texto (reference) sí puede usar input + change
-    $('#filtroReference').on('input change', function () {
+    // Filtros de texto (reference y monto) pueden usar input + change
+    $('#filtroReference, #filtroMonto').on('input change', function () {
         tableTransaction.ajax.reload();
     });
 

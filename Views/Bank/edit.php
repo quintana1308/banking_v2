@@ -144,6 +144,7 @@ ob_start();
                                         <label class="form-label">Prefijo</label>
                                         <select class="form-select mb-3 shadow-none" name="prefix" id="prefix">
                                             <option value="BTC" <?= ($data['bank']['banco'] == 'BTC') ? 'selected' : '' ?>>BTC - BICENTENARIO</option>
+                                            <option value="BCR" <?= ($data['bank']['banco'] == 'BCR') ? 'selected' : '' ?>>BCR - BANCARIBE</option>
                                             <option value="BNC" <?= ($data['bank']['banco'] == 'BNC') ? 'selected' : '' ?>>BNC - BNC</option>
                                             <option value="BDT" <?= ($data['bank']['banco'] == 'BDT') ? 'selected' : '' ?>>BDT - DEL TESORO</option>
                                             <option value="BCM" <?= ($data['bank']['banco'] == 'BCM') ? 'selected' : '' ?>>BCM - BANCAMIGA</option>

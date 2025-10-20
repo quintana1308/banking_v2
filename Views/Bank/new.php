@@ -143,6 +143,7 @@ ob_start();
                                         <label class="form-label">Prefijo</label>
                                         <select class="form-select mb-3 shadow-none" name="prefix" id="prefix">
                                             <option value="BTC">BTC - BICENTENARIO</option>
+                                            <option value="BCR">BCR - BANCARIBE</option>
                                             <option value="BNC">BNC - BNC</option>
                                             <option value="BDT">BDT - DEL TESORO</option>
                                             <option value="BCM">BCM - BANCAMIGA</option>
