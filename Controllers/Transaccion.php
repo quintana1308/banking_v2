@@ -1007,8 +1007,6 @@ class Transaccion extends Controllers{
 	//PROCESO DE BANCO BANCARIBE (PDF)
 	private function bancoBancaribe($data)
 	{	
-		dep($data);
-		exit;
 		// Puedes hacer un print_r si estás debuggeando:
 		$movimientos = $data['transactions'];
 		$movimientos_transformados = [];
@@ -2013,6 +2011,35 @@ class Transaccion extends Controllers{
 			$spreadsheet = IOFactory::load($filePath);
 			$sheet = $spreadsheet->getActiveSheet();
 			$rows = $sheet->toArray();
+
+			foreach ($rows as $fila) {
+				
+				if (count($fila) > 18) {
+					$result = $this->procesarExcelBnc1($filePath);
+					return $result;
+				}else{
+					$result = $this->procesarExcelBnc2($filePath);
+					return $result;
+				}
+			}
+
+		} catch (Exception $e) {
+			if (file_exists($filePath)) unlink($filePath);
+			echo json_encode([
+				'success' => false,
+				'msg' => 'Archivo Excel esta dañado y/o absoleto.'
+			]);
+			die();
+		}
+	}
+
+	//PROCESO DE BANCO BNC 1 (EXCEL)
+	private function procesarExcelBnc1($filePath)
+	{	
+		try {
+			$spreadsheet = IOFactory::load($filePath);
+			$sheet = $spreadsheet->getActiveSheet();
+			$rows = $sheet->toArray();
 			
 			$movimientos_transformados = [];
 			$totalMovimientos = 0;
@@ -2047,6 +2074,68 @@ class Transaccion extends Controllers{
 				];
 				
 				$totalMovimientos++;
+			}
+
+			return [
+				'total' => $totalMovimientos,
+				'mov' => $movimientos_transformados
+				];
+
+		} catch (Exception $e) {
+			if (file_exists($filePath)) unlink($filePath);
+			echo json_encode([
+				'success' => false,
+				'msg' => 'Archivo Excel esta dañado y/o absoleto.'
+			]);
+			die();
+		}
+	}
+
+	//PROCESO DE BANCO BNC 2 (EXCEL)
+	private function procesarExcelBnc2($filePath)
+	{	
+		try {
+			$spreadsheet = IOFactory::load($filePath);
+			$sheet = $spreadsheet->getActiveSheet();
+			$rows = $sheet->toArray();
+
+			$movimientos_transformados = [];
+			$totalMovimientos = 0;
+
+			// Asume que la primera fila son los encabezados
+			for ($i = 17; $i < count($rows); $i++) {
+				$fila = $rows[$i];
+				if ($fila[13] == 'Saldo') {
+					continue; 
+				}
+				if ($fila[13] == '') {
+					continue; 
+				}
+				if ($fila[1] == 'Totales') {
+					continue; 
+				}
+
+
+				$fecha = DateTime::createFromFormat('Y/m/d', $fila[1])->format('Y-m-d');
+				
+				$debit = $this->parseEuropeanNumber($fila[11]);
+				$credit = $this->parseEuropeanNumber($fila[12]);
+
+				if ($credit == 0) {
+					$monto = $debit;
+				} else {
+					$monto = $credit;
+				}
+		
+				// Ajusta los índices [0], [1], [2] según el orden de tus columnas
+				$movimientos_transformados[] = [
+					'fecha'      => $fecha,  // Ej: "2024-01-01"
+					'referencia' => $fila[9],  // Ej: "123456"
+					'monto'      => $monto,  // Ej: "100.00"
+				];
+				
+				$totalMovimientos++;
+				
 			}
 
 			return [
