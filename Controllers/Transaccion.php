@@ -2033,7 +2033,7 @@ class Transaccion extends Controllers{
 		}
 	}
 
-	//PROCESO DE BANCO BNC 1 (EXCEL)
+	//PROCESO DE BANCO BNC - FORMATO 1(EXCEL)
 	private function procesarExcelBnc1($filePath)
 	{	
 		try {
@@ -2091,7 +2091,7 @@ class Transaccion extends Controllers{
 		}
 	}
 
-	//PROCESO DE BANCO BNC 2 (EXCEL)
+	//PROCESO DE BANCO BNC - FORMATO 2(EXCEL)
 	private function procesarExcelBnc2($filePath)
 	{	
 		try {
