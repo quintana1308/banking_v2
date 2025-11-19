@@ -930,6 +930,45 @@ class Transaccion extends Controllers{
 	}
 
 	/**
+	 * Detecta automáticamente el formato de fecha y la convierte a Y-m-d
+	 * Soporta formatos: d/m/Y, m/d/Y, d-m-Y, m-d-Y
+	 */
+	private function detectarFormatoFecha($fechaStr) {
+		$fechaStr = trim($fechaStr);
+		
+		// Lista de formatos posibles a probar
+		$formatos = [
+			'd/m/Y',  // 17/11/2025
+			'm/d/Y',  // 11/17/2025
+			'd-m-Y',  // 17-11-2025
+			'm-d-Y',  // 11-17-2025
+			'Y-m-d',  // 2025-11-17 (ya en formato correcto)
+			'Y/m/d'   // 2025/11/17
+		];
+		
+		foreach ($formatos as $formato) {
+			$fechaObj = DateTime::createFromFormat($formato, $fechaStr);
+			if ($fechaObj !== false) {
+				// Verificar que la fecha sea válida comparando con el string original
+				$fechaFormateada = $fechaObj->format($formato);
+				if ($fechaFormateada === $fechaStr) {
+					return $fechaObj->format('Y-m-d');
+				}
+			}
+		}
+		
+		// Si ningún formato funciona, intentar con strtotime como último recurso
+		$timestamp = strtotime($fechaStr);
+		if ($timestamp !== false) {
+			return date('Y-m-d', $timestamp);
+		}
+		
+		// Si todo falla, registrar error y retornar fecha actual
+		error_log("Error al parsear fecha: " . $fechaStr);
+		return date('Y-m-d'); // Fecha actual como fallback
+	}
+
+	/**
 	 * Obtiene la API Key de PDF.co desde Config/Config.php (constante PDFCO_API_KEY).
 	 * - Mantiene compatibilidad sin cambiar rutas ni lógica de negocio.
 	 * - Si no está definida, retorna cadena vacía para manejo controlado.
@@ -1464,13 +1503,13 @@ class Transaccion extends Controllers{
 			
 			foreach ($rows as $fila) {
 
-				if (count($fila) > 11) {
+				if (count($fila) == 13) {
 					$result = $this->procesarExcelVenezuela3($filePath);
 					return $result;
 				}else if (count($fila) > 8) {
 					$result = $this->procesarExcelVenezuela2($filePath);
 					return $result;
-				}else{
+				}else if (count($fila) == 8){
 					$result = $this->procesarExcelVenezuela1($filePath);
 					return $result;
 				}
@@ -1499,13 +1538,8 @@ class Transaccion extends Controllers{
 			// Asume que la primera fila son los encabezados
 			for ($i = 1; $i < count($rows); $i++) {
 				$fila = $rows[$i];
-
-
-				if ($fila[2] == 'SALDO INICIAL') {
-					continue;
-				}
-		
-				$fecha = DateTime::createFromFormat('d/m/Y', $fila[0])->format('Y-m-d');
+				
+				$fecha = $this->detectarFormatoFecha($fila[0]);
 
 				$amount = $this->parseEuropeanNumber($fila[4]);
 
@@ -1594,30 +1628,22 @@ class Transaccion extends Controllers{
 			for ($i = 6; $i < count($rows); $i++) {
 				$fila = $rows[$i];
 
-
-				if ($fila[0] == 'Saldo inicial') {
-					continue;
-				}
-				if ($fila[1] == '') {
-					continue;
-				}
-
-				if ($fila[0] == 'Referencia') {
+				if ($fila[2] == 'SALDO INICIAL') {
 					continue;
 				}
 				
-				$fecha = DateTime::createFromFormat('d/m/Y', $fila[4])->format('Y-m-d');
+				$fecha = $this->detectarFormatoFecha($fila[3]);
 
-				if ($fila[7] == 'NC') {
-					$monto = $this->parseEuropeanNumber($fila[11]);
+				if ($fila[4] == 'NC') {
+					$monto = $this->parseEuropeanNumber($fila[5]);
 				} else {
-					$monto = $this->parseEuropeanNumber($fila[9]);
+					$monto = $this->parseEuropeanNumber($fila[6]);
 				}
 
 				// Ajusta los índices [0], [1], [2] según el orden de tus columnas
 				$movimientos_transformados[] = [
 					'fecha'      => $fecha,  // Ej: "2024-01-01"
-					'referencia' => $fila[0],  // Ej: "123456"
+					'referencia' => $fila[1],  // Ej: "123456"
 					'monto'      => $monto,  // Ej: "100.00"
 				];
 				
@@ -1842,7 +1868,6 @@ class Transaccion extends Controllers{
 			$sheet = $spreadsheet->getActiveSheet();
 			$rows = $sheet->toArray();
 
-			
 			$movimientos_transformados = [];
 			$totalMovimientos = 0;
 			
@@ -1853,7 +1878,7 @@ class Transaccion extends Controllers{
 					break; // Termina el ciclo si la fecha está vacía
 				}
 
-				$fecha = DateTime::createFromFormat('d/m/y', $fila[1])->format('Y-m-d');
+				$fecha = $this->detectarFormatoFecha($fila[1]);
 
 				$debit = $this->parseEuropeanNumber($fila[4]);
 				$credit = $this->parseEuropeanNumber($fila[5]);
@@ -1912,7 +1937,7 @@ class Transaccion extends Controllers{
 				if($fila[0] == 'Fecha'){
 					continue;
 				}else{
-					$fecha = DateTime::createFromFormat('Y/m/d', $fila[0])->format('Y-m-d');
+					$fecha = $this->detectarFormatoFecha($fila[0]);
 				}
 
 				$amount = $this->parseEuropeanNumber($fila[3]);
@@ -1963,9 +1988,7 @@ class Transaccion extends Controllers{
 				if ($fila[2] == 'Saldo Inicial') {
 					continue; 
 				}
-				//$fecha = DateTime::createFromFormat('d/m/Y', $fila[0])->format('Y-m-d');
-				$fecha = DateTime::createFromFormat('d/m/Y', $fila[0])->format('Y-m-d');
-				
+				$fecha = $this->detectarFormatoFecha($fila[0]);
 				
 				$debit = $this->parseEuropeanNumber($fila[3]);
 				$credit = $this->parseEuropeanNumber($fila[4]);
@@ -2053,9 +2076,9 @@ class Transaccion extends Controllers{
 				if ($fila[1] == '') {
 					continue; 
 				}
-				//$fecha = DateTime::createFromFormat('d/m/Y', $fila[0])->format('Y-m-d');
-				$fecha = DateTime::createFromFormat('d/m/Y', $fila[1])->format('Y-m-d');
-				
+
+				//$fecha = DateTime::createFromFormat('d/m/Y', $fila[1])->format('Y-m-d');
+				$fecha = $this->detectarFormatoFecha($fila[0]);
 				
 				$debit = $this->parseEuropeanNumber($fila[13]);
 				$credit = $this->parseEuropeanNumber($fila[15]);
@@ -2115,9 +2138,9 @@ class Transaccion extends Controllers{
 					continue; 
 				}
 
+				//$fecha = DateTime::createFromFormat('Y/m/d', $fila[1])->format('Y-m-d');
+				$fecha = $this->detectarFormatoFecha($fila[0]);
 
-				$fecha = DateTime::createFromFormat('Y/m/d', $fila[1])->format('Y-m-d');
-				
 				$debit = $this->parseEuropeanNumber($fila[11]);
 				$credit = $this->parseEuropeanNumber($fila[12]);
 
@@ -2340,42 +2363,32 @@ class Transaccion extends Controllers{
 
 	private function procesarExcelProvincial1($filePath)
 	{	
-		dep('FORMATO EN MANTENIMIENTO');
-		exit;
-		
+
 		try {
 			$spreadsheet = IOFactory::load($filePath);
 			$sheet = $spreadsheet->getActiveSheet();
 			$rows = $sheet->toArray();
-			
+
 			$movimientos_transformados = [];
 			$totalMovimientos = 0;
 
 			// Asume que la primera fila son los encabezados
-			for ($i = 4; $i < count($rows); $i++) {
+			for ($i = 20; $i < count($rows); $i++) {
 				$fila = $rows[$i];
 				
-				if($fila[1] == '' || $fila[1] == 'F. OPER.'){
+				if($fila[0] == ''){
 					continue;
 				}
-				$fecha = DateTime::createFromFormat('d-m-Y', $fila[1])->format('Y-m-d');
 
-				$debit = $this->parseEuropeanNumber($fila[14]);
-				$credit = $this->parseEuropeanNumber($fila[12]);
+				$fecha = $this->detectarFormatoFecha($fila[0]);
 
-				
-				if ($credit == 0) {
-					$monto = '-'.$debit;
-				} else {
-
-					$monto = $credit;
-				}
+				$amount = $this->parseEuropeanNumber($fila[5]);
 
 				// Ajusta los índices [0], [1], [2] según el orden de tus columnas
 				$movimientos_transformados[] = [
 					'fecha'      => $fecha,  // Ej: "2024-01-01"
 					'referencia' => $fila[3],  // Ej: "123456"
-					'monto'      => $monto,  // Ej: "100.00"
+					'monto'      => $amount,  // Ej: "100.00"
 				];
 				
 				$totalMovimientos++;
@@ -2399,6 +2412,7 @@ class Transaccion extends Controllers{
 	//PROCESO DE BANCO PROVINCIAL (EXCEL - PAGO MOVIL)
 	private function procesarExcelProvincial2($filePath)
 	{	
+
 		try {
 			$spreadsheet = IOFactory::load($filePath);
 			$sheet = $spreadsheet->getActiveSheet();
@@ -2411,7 +2425,7 @@ class Transaccion extends Controllers{
 			for ($i = 1; $i < count($rows); $i++) {
 				$fila = $rows[$i];
 				
-				$fecha = DateTime::createFromFormat('m/d/Y', $fila[0])->format('Y-m-d');
+				$fecha = $this->detectarFormatoFecha($fila[0]);
 
 				$amount = $this->parseEuropeanNumber($fila[2]);
 
