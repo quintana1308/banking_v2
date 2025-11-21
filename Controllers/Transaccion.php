@@ -935,7 +935,7 @@ class Transaccion extends Controllers{
 	 */
 	private function detectarFormatoFecha($fechaStr) {
 		$fechaStr = trim($fechaStr);
-		
+
 		// Lista de formatos posibles a probar
 		$formatos = [
 			'd/m/Y',  // 17/11/2025
@@ -2034,10 +2034,9 @@ class Transaccion extends Controllers{
 			$spreadsheet = IOFactory::load($filePath);
 			$sheet = $spreadsheet->getActiveSheet();
 			$rows = $sheet->toArray();
-
+			
 			foreach ($rows as $fila) {
-				
-				if (count($fila) > 18) {
+				if (count($fila) == 19) {
 					$result = $this->procesarExcelBnc1($filePath);
 					return $result;
 				}else{
@@ -2059,6 +2058,7 @@ class Transaccion extends Controllers{
 	//PROCESO DE BANCO BNC - FORMATO 1(EXCEL)
 	private function procesarExcelBnc1($filePath)
 	{	
+
 		try {
 			$spreadsheet = IOFactory::load($filePath);
 			$sheet = $spreadsheet->getActiveSheet();
@@ -2078,8 +2078,8 @@ class Transaccion extends Controllers{
 				}
 
 				//$fecha = DateTime::createFromFormat('d/m/Y', $fila[1])->format('Y-m-d');
-				$fecha = $this->detectarFormatoFecha($fila[0]);
-				
+				$fecha = $this->detectarFormatoFecha($fila[1]);
+		
 				$debit = $this->parseEuropeanNumber($fila[13]);
 				$credit = $this->parseEuropeanNumber($fila[15]);
 
@@ -2117,6 +2117,12 @@ class Transaccion extends Controllers{
 	//PROCESO DE BANCO BNC - FORMATO 2(EXCEL)
 	private function procesarExcelBnc2($filePath)
 	{	
+		echo json_encode([
+			'success' => false,
+			'msg' => 'Formato en Manteniemiento'
+		]);
+		die();
+
 		try {
 			$spreadsheet = IOFactory::load($filePath);
 			$sheet = $spreadsheet->getActiveSheet();
