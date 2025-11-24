@@ -2219,7 +2219,7 @@ class Transaccion extends Controllers{
 			$spreadsheet = IOFactory::load($filePath);
 			$sheet = $spreadsheet->getActiveSheet();
 			$rows = $sheet->toArray();
-	
+			
 			$movimientos_transformados = [];
 			$totalMovimientos = 0;
 
@@ -2227,8 +2227,7 @@ class Transaccion extends Controllers{
 			for ($i = 2; $i < count($rows); $i++) {
 				$fila = $rows[$i];
 
-				//$fecha = DateTime::createFromFormat('d/m/Y', $fila[0])->format('Y-m-d');
-				$fecha = DateTime::createFromFormat('d/m/Y', $fila[0])->format('Y-m-d');
+				$fecha = $this->detectarFormatoFecha($fila[0]);
 				
 				$debit = $this->parseEuropeanNumber($fila[3]);
 				$credit = $this->parseEuropeanNumber($fila[4]);
