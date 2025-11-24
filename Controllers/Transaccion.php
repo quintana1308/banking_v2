@@ -1,6 +1,9 @@
 <?php 
 	include dirname(__DIR__) . '/vendor/autoload.php';
 	use PhpOffice\PhpSpreadsheet\IOFactory;
+	
+	// Incluir el modelo de comentarios
+	require_once dirname(__DIR__) . '/Models/CommentModel.php';
 
 class Transaccion extends Controllers{
 
@@ -31,6 +34,11 @@ class Transaccion extends Controllers{
 		$data['page_functions_js'] = "functions_transaction.js";
 		$data['accounts'] = $this->model->getAccounts();
 		$data['can_delete_transactions'] = canDeleteTransactions();
+		
+		// Verificar permisos de comentarios del usuario
+		$commentModel = new CommentModel();
+		$data['can_comment'] = $commentModel->canUserComment($_SESSION['idUser']);
+		
 		$this->views->getView($this,"transaccion", $data);
 	}
 
@@ -2743,6 +2751,146 @@ class Transaccion extends Controllers{
 			die();
 		}
 
+	}
+
+	// ============================================
+	// MÉTODOS PARA GESTIÓN DE COMENTARIOS
+	// ============================================
+
+	/**
+	 * Obtener comentario de una transacción
+	 * Method: GET
+	 * Params: conciliation_id, empresa_id
+	 */
+	public function getComment()
+	{
+		if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+			echo json_encode(['status' => false, 'message' => 'Método no permitido'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$conciliationId = intval($_GET['conciliation_id'] ?? 0);
+		$userId = $_SESSION['idUser'] ?? 0;
+
+		if ($conciliationId <= 0) {
+			echo json_encode(['status' => false, 'message' => 'ID de transacción inválido'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		// Instanciar modelo de comentarios
+		$commentModel = new CommentModel();
+
+		// Obtener información de la transacción y empresa
+		$transactionInfo = $commentModel->getTransactionWithEnterprise($conciliationId);
+		if (!$transactionInfo) {
+			echo json_encode(['status' => false, 'message' => 'Transacción no encontrada o sin acceso'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$empresaId = $transactionInfo['transaction']['id_enterprise'];
+
+		// Obtener comentario existente
+		$comment = $commentModel->getTransactionComment($conciliationId, $empresaId);
+
+		if ($comment) {
+			echo json_encode([
+				'status' => true,
+				'has_comment' => true,
+				'comment' => $comment
+			], JSON_UNESCAPED_UNICODE);
+		} else {
+			echo json_encode([
+				'status' => true,
+				'has_comment' => false,
+				'can_comment' => $commentModel->canUserComment($userId)
+			], JSON_UNESCAPED_UNICODE);
+		}
+		die();
+	}
+
+	/**
+	 * Crear comentario para una transacción
+	 * Method: POST (JSON)
+	 * Body: { conciliation_id, empresa_id, description }
+	 */
+	public function createComment()
+	{
+		if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+			echo json_encode(['status' => false, 'message' => 'Método no permitido'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$postdata = file_get_contents("php://input");
+		$request = json_decode($postdata, true);
+
+		if (!is_array($request)) {
+			echo json_encode(['status' => false, 'message' => 'JSON inválido'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$conciliationId = intval($request['conciliation_id'] ?? 0);
+		$description = trim($request['description'] ?? '');
+		$userId = $_SESSION['idUser'] ?? 0;
+
+		// Validaciones básicas
+		if ($conciliationId <= 0 || empty($description)) {
+			echo json_encode(['status' => false, 'message' => 'Datos incompletos'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		if (strlen($description) > 1000) {
+			echo json_encode(['status' => false, 'message' => 'El comentario es demasiado largo (máx 1000 caracteres)'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		// Instanciar modelo de comentarios
+		$commentModel = new CommentModel();
+
+		// Verificar permisos del usuario
+		if (!$commentModel->canUserComment($userId)) {
+			echo json_encode(['status' => false, 'message' => 'No tienes permisos para crear comentarios'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		// Obtener información de la transacción y empresa
+		$transactionInfo = $commentModel->getTransactionWithEnterprise($conciliationId);
+		if (!$transactionInfo) {
+			echo json_encode(['status' => false, 'message' => 'Transacción no encontrada o sin acceso'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$empresaId = $transactionInfo['transaction']['id_enterprise'];
+
+		// Verificar si ya existe un comentario
+		$existingComment = $commentModel->getTransactionComment($conciliationId, $empresaId);
+		if ($existingComment) {
+			echo json_encode(['status' => false, 'message' => 'Esta transacción ya tiene un comentario'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		// Crear el comentario
+		$commentId = $commentModel->createComment($description);
+		if (!$commentId) {
+			echo json_encode(['status' => false, 'message' => 'Error al crear el comentario'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		// Crear la relación
+		$relationId = $commentModel->createConciliationComment($conciliationId, $empresaId, $commentId, $userId);
+		if (!$relationId) {
+			echo json_encode(['status' => false, 'message' => 'Error al asociar el comentario con la transacción'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		// Obtener el comentario completo para la respuesta
+		$newComment = $commentModel->getTransactionComment($conciliationId, $empresaId);
+
+		echo json_encode([
+			'status' => true,
+			'message' => 'Comentario creado exitosamente',
+			'comment' => $newComment
+		], JSON_UNESCAPED_UNICODE);
+		die();
 	}
 }
 ?>

@@ -264,6 +264,7 @@ ob_start();
                                     <th>RESPONSABLE</th>
                                     <th>ASIGNADO</th>
                                     <th>ESTADO</th>
+                                    <th>COMENTARIOS</th>
                                     <?php if($data['can_delete_transactions']): ?>
                                     <th>ACCIONES</th>
                                     <?php endif; ?>
@@ -278,12 +279,123 @@ ob_start();
     </div>
 </div>
 
+<!-- Modal para Comentarios -->
+<div class="modal fade" id="commentModal" tabindex="-1" aria-labelledby="commentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="background: rgba(13, 17, 23, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(48, 54, 61, 0.8); box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);">
+            <div class="modal-header" style="border-bottom: 1px solid rgba(48, 54, 61, 0.6); background: rgba(21, 32, 43, 0.8);">
+                <h5 class="modal-title text-gradient" id="commentModalLabel" style="color: #fff; font-weight: 600;">
+                    <i class="fas fa-comment-alt me-2" style="color: #667eea;"></i>
+                    <span id="modalTitle">Comentario de Transacción</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="background: rgba(13, 17, 23, 0.9);">
+                <!-- Información de la transacción -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="futuristic-card-compact" style="background: rgba(21, 32, 43, 0.8); border: 1px solid rgba(48, 54, 61, 0.6); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);">
+                            <div class="card-body p-3">
+                                <h6 class="text-gradient mb-3" style="color: #fff; font-weight: 500;">
+                                    <i class="fas fa-info-circle me-2" style="color: #667eea;"></i>
+                                    Información de la Transacción
+                                </h6>
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <small style="color: #8b949e;">Banco:</small>
+                                        <div class="fw-bold" id="transactionBank" style="color: #f0f6fc;">-</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <small style="color: #8b949e;">Cuenta:</small>
+                                        <div class="fw-bold" id="transactionAccount" style="color: #f0f6fc;">-</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <small style="color: #8b949e;">Referencia:</small>
+                                        <div class="fw-bold" id="transactionReference" style="color: #f0f6fc;">-</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <small style="color: #8b949e;">Monto:</small>
+                                        <div class="fw-bold" id="transactionAmount" style="color: #f0f6fc;">-</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
+                <!-- Formulario para crear comentario -->
+                <div id="createCommentSection" class="d-none">
+                    <form id="commentForm">
+                        <div class="form-group-futuristic mb-3">
+                            <label class="form-label-futuristic" style="color: #f0f6fc; font-weight: 500;">
+                                <i class="fas fa-edit me-2" style="color: #667eea;"></i>
+                                Comentario
+                            </label>
+                            <div class="input-container">
+                                <textarea id="commentDescription" class="form-control-futuristic" rows="4" 
+                                         placeholder="Escribe tu comentario aquí..." maxlength="1000" required
+                                         style="background: rgba(21, 32, 43, 0.8); border: 1px solid rgba(48, 54, 61, 0.6); color: #f0f6fc; resize: vertical;"></textarea>
+                                <div class="input-border"></div>
+                            </div>
+                            <small style="color: #8b949e;">
+                                <span id="charCount">0</span>/1000 caracteres
+                            </small>
+                        </div>
+                    </form>
+                </div>
 
+                <!-- Mostrar comentario existente -->
+                <div id="viewCommentSection" class="d-none">
+                    <div class="futuristic-card-compact" style="background: rgba(21, 32, 43, 0.8); border: 1px solid rgba(48, 54, 61, 0.6); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);">
+                        <div class="card-body p-3">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <h6 class="mb-0" style="color: #fff; font-weight: 500;">
+                                    <i class="fas fa-comment me-2" style="color: #667eea;"></i>
+                                    Comentario
+                                </h6>
+                                <div class="text-end">
+                                    <small class="d-block" style="color: #8b949e;">Creado por:</small>
+                                    <span class="fw-bold" id="commentUser" style="color: #f0f6fc;">-</span>
+                                </div>
+                            </div>
+                            <div class="comment-content p-3" style="background: rgba(13, 17, 23, 0.6); border-radius: 8px; border-left: 4px solid #667eea;">
+                                <p id="commentText" class="mb-2" style="color: #f0f6fc; line-height: 1.5;">-</p>
+                                <small style="color: #8b949e;">
+                                    <i class="fas fa-clock me-1"></i>
+                                    <span id="commentDate">-</span>
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mensaje cuando no se puede comentar -->
+                <div id="noPermissionSection" class="d-none">
+                    <div class="alert alert-warning" style="background: rgba(255, 193, 7, 0.15); border: 1px solid rgba(255, 193, 7, 0.4); color: #ffc107; border-radius: 8px;">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        No tienes permisos para crear comentarios en las transacciones.
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid rgba(48, 54, 61, 0.6); background: rgba(21, 32, 43, 0.8);">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="background: rgba(108, 117, 125, 0.8); border: 1px solid rgba(108, 117, 125, 0.6); color: #f0f6fc;">
+                    <i class="fas fa-times me-2"></i>
+                    Cerrar
+                </button>
+                <button type="button" id="saveCommentBtn" class="btn-primary-futuristic d-none" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; color: #fff; font-weight: 500;">
+                    <span class="btn-glow"></span>
+                    <i class="fas fa-save me-2"></i>
+                    Guardar Comentario
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script>
 // Variables globales para permisos
 const canDeleteTransactions = <?= $data['can_delete_transactions'] ? 'true' : 'false' ?>;
+const canComment = <?= $data['can_comment'] ? 'true' : 'false' ?>;
 
 document.addEventListener('DOMContentLoaded', function() {
     // Focus effects for form controls

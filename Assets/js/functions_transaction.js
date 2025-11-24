@@ -9,9 +9,9 @@ document.addEventListener('DOMContentLoaded', function () {
         hiddenColumns = []; 
     }
 
-    // Agregar columna de eliminar (índice 9) a columnas ocultas si el usuario no tiene permisos
+    // Agregar columna de eliminar (índice 10) a columnas ocultas si el usuario no tiene permisos
     if (typeof canDeleteTransactions !== 'undefined' && !canDeleteTransactions) {
-        hiddenColumns.push(9); // Columna de acciones/eliminar
+        hiddenColumns.push(10); // Columna de acciones/eliminar
     }
 
     tableTransaction = $('#transaction-list-table').DataTable({
@@ -146,6 +146,31 @@ document.addEventListener('DOMContentLoaded', function () {
                 orderable: false,
                 searchable: false,
                 render: function (data, type, row) {
+                    // Verificar si el usuario puede comentar
+                    if (typeof canComment !== 'undefined' && canComment) {
+                        return `<button class="btn btn-primary btn-sm btn-comment" 
+                                       data-id="${row.id}" 
+                                       data-bank="${row.bank}" 
+                                       data-account="${row.account}" 
+                                       data-reference="${row.reference}" 
+                                       data-amount="${row.amount}"
+                                       data-has-comment="false"
+                                       title="Agregar comentario">
+                                    <i class="fas fa-comment-plus"></i>
+                                </button>`;
+                    } else {
+                        return `<span class="text-muted" title="Sin permisos para comentar">
+                                    <i class="fas fa-comment-slash"></i>
+                                </span>`;
+                    }
+                },
+                className: 'text-center'
+            }, // 9
+            {
+                data: null,
+                orderable: false,
+                searchable: false,
+                render: function (data, type, row) {
                     if (row.can_delete) {
                         return `<button class="btn btn-danger btn-sm btn-delete" data-id="${row.id}" title="Eliminar transacción">
                                     <i class="fas fa-trash"></i>
@@ -155,7 +180,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 },
                 className: 'text-center'
-            } // 9
+            } // 10
         ],
         columnDefs: [
             { targets: hiddenColumns, visible: false }, // Ocultar bank, account
@@ -182,6 +207,13 @@ document.addEventListener('DOMContentLoaded', function () {
         "order": [[4, "asc"]],
         "scrollX": true,
         "autoWidth": false
+    });
+
+    // Verificar comentarios después de cargar la tabla
+    tableTransaction.on('draw', function() {
+        setTimeout(function() {
+            checkAllTransactionsComments();
+        }, 500); // Pequeño delay para asegurar que la tabla esté renderizada
     });
 
     // Función para recargar el DataTable
@@ -664,7 +696,327 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    // ============================================
+    // FUNCIONALIDAD DE COMENTARIOS
+    // ============================================
+
+    // Variables globales para el modal de comentarios
+    let currentTransactionId = null;
+    let currentEmpresaId = null;
+
+    // Event listener para el botón de comentarios
+    $('#transaction-list-table tbody').on('click', '.btn-comment', function () {
+        const $btn = $(this);
+        const id = $btn.data('id');
+        const bank = $btn.data('bank');
+        const account = $btn.data('account');
+        const reference = $btn.data('reference');
+        const amount = $btn.data('amount');
+
+        // Guardar datos actuales y referencia al botón
+        currentTransactionId = id;
+        currentEmpresaId = null; // Se obtiene del backend
+        window.currentCommentButton = $btn;
+
+        // Llenar información de la transacción en el modal
+        $('#transactionBank').text(bank);
+        $('#transactionAccount').text(account);
+        $('#transactionReference').text(reference);
+        $('#transactionAmount').text(amount);
+
+        // Limpiar secciones del modal
+        $('#createCommentSection').addClass('d-none');
+        $('#viewCommentSection').addClass('d-none');
+        $('#noPermissionSection').addClass('d-none');
+        $('#saveCommentBtn').addClass('d-none');
+
+        // Verificar si ya existe comentario
+        checkExistingComment(id);
+
+        // Mostrar modal
+        $('#commentModal').modal('show');
+    });
+
+    // Función para verificar comentario existente
+    function checkExistingComment(conciliationId) {
+        fetch(`${base_url}/transaccion/getComment?conciliation_id=${conciliationId}`, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error("Error HTTP: " + response.status);
+            return response.json();
+        })
+        .then(data => {
+            if (data.status) {
+                if (data.has_comment) {
+                    // Mostrar comentario existente
+                    showExistingComment(data.comment);
+                    // Actualizar botón a "ver comentario"
+                    if (window.currentCommentButton) {
+                        updateCommentButton(window.currentCommentButton, true);
+                    }
+                } else {
+                    // Mostrar formulario para crear comentario
+                    if (data.can_comment) {
+                        showCreateCommentForm();
+                        // Actualizar botón a "agregar comentario"
+                        if (window.currentCommentButton) {
+                            updateCommentButton(window.currentCommentButton, false);
+                        }
+                    } else {
+                        showNoPermissionMessage();
+                    }
+                }
+            } else {
+                Swal.fire({
+                    title: 'Error',
+                    text: data.message,
+                    icon: 'error',
+                    background: 'rgba(13, 17, 23, 0.95)',
+                    color: '#f0f6fc',
+                    iconColor: '#dc3545',
+                    confirmButtonColor: '#dc3545',
+                    confirmButtonText: 'Entendido'
+                });
+            }
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            Swal.fire({
+                title: 'Error',
+                text: 'Error al verificar comentario: ' + error.message,
+                icon: 'error',
+                background: 'rgba(13, 17, 23, 0.95)',
+                color: '#f0f6fc',
+                iconColor: '#dc3545',
+                confirmButtonColor: '#dc3545',
+                confirmButtonText: 'Entendido'
+            });
+        });
+    }
+
+    // Función para mostrar comentario existente
+    function showExistingComment(comment) {
+        $('#modalTitle').text('Ver Comentario');
+        $('#commentUser').text(comment.user_name);
+        $('#commentText').text(comment.description);
+        
+        // Formatear fecha
+        const date = new Date(comment.created_at);
+        const formattedDate = date.toLocaleDateString('es-VE') + ' ' + date.toLocaleTimeString('es-VE');
+        $('#commentDate').text(formattedDate);
+        
+        $('#viewCommentSection').removeClass('d-none');
+    }
+
+    // Función para mostrar formulario de crear comentario
+    function showCreateCommentForm() {
+        $('#modalTitle').text('Agregar Comentario');
+        $('#commentDescription').val('');
+        $('#charCount').text('0');
+        $('#createCommentSection').removeClass('d-none');
+        $('#saveCommentBtn').removeClass('d-none');
+    }
+
+    // Función para mostrar mensaje de sin permisos
+    function showNoPermissionMessage() {
+        $('#modalTitle').text('Sin Permisos');
+        $('#noPermissionSection').removeClass('d-none');
+    }
+
+    // Contador de caracteres para el textarea
+    $(document).on('input', '#commentDescription', function() {
+        const length = $(this).val().length;
+        $('#charCount').text(length);
+        
+        // Cambiar color si se acerca al límite
+        if (length > 900) {
+            $('#charCount').addClass('text-warning');
+        } else {
+            $('#charCount').removeClass('text-warning');
+        }
+    });
+
+    // Event listener para guardar comentario
+    $(document).on('click', '#saveCommentBtn', function() {
+        const description = $('#commentDescription').val().trim();
+        
+        if (!description) {
+            Swal.fire({
+                title: 'Atención',
+                text: 'Por favor ingresa un comentario',
+                icon: 'warning',
+                background: 'rgba(13, 17, 23, 0.95)',
+                color: '#f0f6fc',
+                iconColor: '#ffc107',
+                confirmButtonColor: '#667eea',
+                confirmButtonText: 'Entendido'
+            });
+            return;
+        }
+
+        if (description.length > 1000) {
+            Swal.fire({
+                title: 'Atención',
+                text: 'El comentario es demasiado largo (máx 1000 caracteres)',
+                icon: 'warning',
+                background: 'rgba(13, 17, 23, 0.95)',
+                color: '#f0f6fc',
+                iconColor: '#ffc107',
+                confirmButtonColor: '#667eea',
+                confirmButtonText: 'Entendido'
+            });
+            return;
+        }
+
+        // Deshabilitar botón mientras se guarda
+        const btnSave = $(this);
+        const originalHTML = btnSave.html();
+        btnSave.html('<span class="btn-glow"></span><i class="fas fa-spinner fa-spin me-2"></i>Guardando...').prop('disabled', true);
+
+        // Enviar comentario
+        fetch(`${base_url}/transaccion/createComment`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                conciliation_id: currentTransactionId,
+                description: description
+            })
+        })
+        .then(response => {
+            if (!response.ok) throw new Error("Error HTTP: " + response.status);
+            return response.json();
+        })
+        .then(data => {
+            if (data.status) {
+                Swal.fire({
+                    title: '¡Éxito!',
+                    text: data.message,
+                    icon: 'success',
+                    timer: 2000,
+                    timerProgressBar: true,
+                    showConfirmButton: false,
+                    background: 'rgba(13, 17, 23, 0.95)',
+                    color: '#f0f6fc',
+                    iconColor: '#28a745',
+                    customClass: {
+                        popup: 'swal2-show',
+                        title: 'swal2-title',
+                        content: 'swal2-content'
+                    }
+                });
+
+                // Cerrar modal
+                $('#commentModal').modal('hide');
+                
+                // Actualizar el botón de la transacción actual
+                if (window.currentCommentButton) {
+                    updateCommentButton(window.currentCommentButton, true);
+                }
+                
+                // Recargar tabla para mostrar cambios
+                tableTransaction.ajax.reload(null, false);
+            } else {
+                Swal.fire({
+                    title: 'Error',
+                    text: data.message,
+                    icon: 'error',
+                    background: 'rgba(13, 17, 23, 0.95)',
+                    color: '#f0f6fc',
+                    iconColor: '#dc3545',
+                    confirmButtonColor: '#dc3545',
+                    confirmButtonText: 'Entendido'
+                });
+            }
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            Swal.fire({
+                title: 'Error',
+                text: 'Error al guardar comentario: ' + error.message,
+                icon: 'error',
+                background: 'rgba(13, 17, 23, 0.95)',
+                color: '#f0f6fc',
+                iconColor: '#dc3545',
+                confirmButtonColor: '#dc3545',
+                confirmButtonText: 'Entendido'
+            });
+        })
+        .finally(() => {
+            // Restaurar botón
+            btnSave.html(originalHTML).prop('disabled', false);
+        });
+    });
+
 }, false);
+
+// ============================================
+// FUNCIONES GLOBALES PARA COMENTARIOS
+// ============================================
+
+// Función para verificar comentarios de todas las transacciones visibles
+function checkAllTransactionsComments() {
+    // Verificar si la tabla existe
+    if (typeof tableTransaction === 'undefined' || !tableTransaction) {
+        return;
+    }
+    
+    // Obtener todas las filas visibles de la tabla
+    const visibleRows = tableTransaction.rows({ page: 'current' }).nodes();
+    
+    $(visibleRows).each(function(index, row) {
+        const $row = $(row);
+        const $commentBtn = $row.find('.btn-comment');
+        
+        if ($commentBtn.length > 0) {
+            const transactionId = $commentBtn.data('id');
+            
+            // Verificar si esta transacción tiene comentario
+            fetch(`${base_url}/transaccion/getComment?conciliation_id=${transactionId}`, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status && data.has_comment) {
+                    // Cambiar el botón a "ver comentario"
+                    updateCommentButton($commentBtn, true);
+                } else {
+                    // Mantener como "agregar comentario"
+                    updateCommentButton($commentBtn, false);
+                }
+            })
+            .catch(error => {
+                console.error('Error verificando comentario:', error);
+            });
+        }
+    });
+}
+
+// Función para actualizar el botón de comentario
+function updateCommentButton($button, hasComment) {
+    if (hasComment) {
+        // Cambiar a botón de "ver comentario"
+        $button.removeClass('btn-primary').addClass('btn-info');
+        $button.attr('title', 'Ver comentario');
+        $button.attr('data-has-comment', 'true');
+        $button.find('i').removeClass('fa-comment-plus').addClass('fa-eye');
+    } else {
+        // Mantener como "agregar comentario"
+        $button.removeClass('btn-info').addClass('btn-primary');
+        $button.attr('title', 'Agregar comentario');
+        $button.attr('data-has-comment', 'false');
+        $button.find('i').removeClass('fa-eye').addClass('fa-comment-plus');
+    }
+}
 
 function updateTransactionField(id, field, value, cell, displayText = null) {
     fetch(base_url + '/transaccion/updateField', {
