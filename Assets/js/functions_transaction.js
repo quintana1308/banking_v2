@@ -146,41 +146,66 @@ document.addEventListener('DOMContentLoaded', function () {
                 orderable: false,
                 searchable: false,
                 render: function (data, type, row) {
-                    // Verificar si el usuario puede comentar
+                    let actions = '';
+                    
+                    // Botón de comentario
                     if (typeof canComment !== 'undefined' && canComment) {
-                        return `<button class="btn btn-primary btn-sm btn-comment" 
-                                       data-id="${row.id}" 
-                                       data-bank="${row.bank}" 
-                                       data-account="${row.account}" 
-                                       data-reference="${row.reference}" 
-                                       data-amount="${row.amount}"
-                                       data-has-comment="false"
-                                       title="Agregar comentario">
-                                    <i class="fas fa-comment-plus"></i>
-                                </button>`;
+                        const hasComment = row.has_comment || false;
+                        const btnClass = hasComment ? 'btn-info' : 'btn-primary';
+                        const iconClass = hasComment ? 'fa-eye' : 'fa-comment';
+                        const title = hasComment ? 'Ver comentario' : 'Agregar comentario';
+                        
+                        actions += `<button class="btn ${btnClass} btn-sm btn-comment" 
+                                           data-id="${row.id}" 
+                                           data-bank="${row.bank}" 
+                                           data-account="${row.account}" 
+                                           data-reference="${row.reference}" 
+                                           data-amount="${row.amount}"
+                                           data-has-comment="${hasComment}"
+                                           title="${title}"
+                                           style="width: 32px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; margin-right: 4px; border-radius: 5px !important;">
+                                        <i class="fas ${iconClass}"></i>
+                                    </button>`;
                     } else {
-                        return `<span class="text-muted" title="Sin permisos para comentar">
-                                    <i class="fas fa-comment-slash"></i>
-                                </span>`;
+                        // Usuario sin permisos para comentar, pero puede ver comentarios existentes
+                        const hasComment = row.has_comment || false;
+                        
+                        if (hasComment) {
+                            // Si hay comentario, mostrar botón para ver (solo lectura)
+                            actions += `<button class="btn btn-info btn-sm btn-comment" 
+                                               data-id="${row.id}" 
+                                               data-bank="${row.bank}" 
+                                               data-account="${row.account}" 
+                                               data-reference="${row.reference}" 
+                                               data-amount="${row.amount}"
+                                               data-has-comment="true"
+                                               data-readonly="true"
+                                               title="Ver comentario (solo lectura)"
+                                               style="width: 32px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; margin-right: 4px; border-radius: 5px !important;">
+                                            <i class="fas fa-eye"></i>
+                                        </button>`;
+                        } else {
+                            // Si no hay comentario, mostrar icono deshabilitado
+                            actions += `<span class="text-muted" title="Sin permisos para comentar" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; margin-right: 4px;">
+                                            <i class="fas fa-comment-slash"></i>
+                                        </span>`;
+                        }
                     }
-                },
-                className: 'text-center'
-            }, // 9
-            {
-                data: null,
-                orderable: false,
-                searchable: false,
-                render: function (data, type, row) {
+                    
+                    // Botón de eliminar
                     if (row.can_delete) {
-                        return `<button class="btn btn-danger btn-sm btn-delete" data-id="${row.id}" title="Eliminar transacción">
-                                    <i class="fas fa-trash"></i>
-                                </button>`;
+                        actions += `<button class="btn btn-danger btn-sm btn-delete" data-id="${row.id}" title="Eliminar transacción"
+                                           style="width: 32px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center;">
+                                        <i class="fas fa-trash"></i>
+                                    </button>`;
                     } else {
-                        return '<span class="text-muted">-</span>';
+                        actions += '<span class="text-muted" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;">-</span>';
                     }
+                    
+                    return actions;
                 },
                 className: 'text-center'
-            } // 10
+            } // 9 - Acciones (Comentarios + Eliminar)
         ],
         columnDefs: [
             { targets: hiddenColumns, visible: false }, // Ocultar bank, account
@@ -206,15 +231,14 @@ document.addEventListener('DOMContentLoaded', function () {
         "iDisplayLength": 50,
         "order": [[4, "asc"]],
         "scrollX": true,
-        "autoWidth": false
+        "autoWidth": false,
+        "error": function(xhr, error, code) {
+            console.error('Error en DataTable:', error, code);
+            console.error('Respuesta del servidor:', xhr.responseText);
+        }
     });
 
-    // Verificar comentarios después de cargar la tabla
-    tableTransaction.on('draw', function() {
-        setTimeout(function() {
-            checkAllTransactionsComments();
-        }, 500); // Pequeño delay para asegurar que la tabla esté renderizada
-    });
+    // Event listener se agregará después de la inicialización
 
     // Función para recargar el DataTable
     function reloadTransactionTable() {
@@ -323,7 +347,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     $('#transaction-list-table').on('xhr.dt', function () {
         
-        const data = tableTransaction.ajax.json().data;
+        const jsonResponse = tableTransaction.ajax.json();
+        if (!jsonResponse || !jsonResponse.data) {
+            console.error('Error: No se recibieron datos válidos del servidor');
+            return;
+        }
+        
+        const data = jsonResponse.data;
 
         // Obtener valores seleccionados actualmente
         const selectedBank = $('#filtroBank').val();
@@ -960,46 +990,6 @@ document.addEventListener('DOMContentLoaded', function () {
 // FUNCIONES GLOBALES PARA COMENTARIOS
 // ============================================
 
-// Función para verificar comentarios de todas las transacciones visibles
-function checkAllTransactionsComments() {
-    // Verificar si la tabla existe
-    if (typeof tableTransaction === 'undefined' || !tableTransaction) {
-        return;
-    }
-    
-    // Obtener todas las filas visibles de la tabla
-    const visibleRows = tableTransaction.rows({ page: 'current' }).nodes();
-    
-    $(visibleRows).each(function(index, row) {
-        const $row = $(row);
-        const $commentBtn = $row.find('.btn-comment');
-        
-        if ($commentBtn.length > 0) {
-            const transactionId = $commentBtn.data('id');
-            
-            // Verificar si esta transacción tiene comentario
-            fetch(`${base_url}/transaccion/getComment?conciliation_id=${transactionId}`, {
-                method: 'GET',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status && data.has_comment) {
-                    // Cambiar el botón a "ver comentario"
-                    updateCommentButton($commentBtn, true);
-                } else {
-                    // Mantener como "agregar comentario"
-                    updateCommentButton($commentBtn, false);
-                }
-            })
-            .catch(error => {
-                console.error('Error verificando comentario:', error);
-            });
-        }
-    });
-}
 
 // Función para actualizar el botón de comentario
 function updateCommentButton($button, hasComment) {
@@ -1008,13 +998,13 @@ function updateCommentButton($button, hasComment) {
         $button.removeClass('btn-primary').addClass('btn-info');
         $button.attr('title', 'Ver comentario');
         $button.attr('data-has-comment', 'true');
-        $button.find('i').removeClass('fa-comment-plus').addClass('fa-eye');
+        $button.find('i').removeClass('fa-comment').addClass('fa-eye');
     } else {
         // Mantener como "agregar comentario"
         $button.removeClass('btn-info').addClass('btn-primary');
         $button.attr('title', 'Agregar comentario');
         $button.attr('data-has-comment', 'false');
-        $button.find('i').removeClass('fa-eye').addClass('fa-comment-plus');
+        $button.find('i').removeClass('fa-eye').addClass('fa-comment');
     }
 }
 

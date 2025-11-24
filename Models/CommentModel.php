@@ -148,4 +148,53 @@ class CommentModel extends Mysql
         
         return $access !== false;
     }
+
+    /**
+     * Obtener comentarios de múltiples transacciones de forma optimizada
+     * @param array $transactionIds Array de IDs de transacciones
+     * @return array Mapa de transaction_id => tiene_comentario (boolean)
+     */
+    public function getMultipleTransactionComments($transactionIds)
+    {
+        if (empty($transactionIds)) {
+            return [];
+        }
+
+        $userId = $_SESSION['idUser'] ?? 0;
+        $commentsMap = [];
+        
+        // Inicializar todos como false
+        foreach ($transactionIds as $id) {
+            $commentsMap[$id] = false;
+        }
+
+        // Sanitizar IDs de transacciones (solo números)
+        $sanitizedIds = array_map('intval', $transactionIds);
+        $idsString = implode(',', $sanitizedIds);
+        
+        // Consulta optimizada compatible con la clase Mysql
+        $sql = "SELECT DISTINCT cc.conciliation_id 
+                FROM conciliation_comment cc
+                INNER JOIN usuario u ON u.id = $userId
+                WHERE cc.conciliation_id IN ($idsString)
+                AND (
+                    u.id_rol = 1 
+                    OR cc.empresa_id = u.id_enterprise 
+                    OR EXISTS (
+                        SELECT 1 FROM usuario_empresa ue 
+                        WHERE ue.user_id = u.id AND ue.enterprise_id = cc.empresa_id
+                    )
+                )";
+        
+        $results = $this->select_all($sql);
+        
+        // Marcar las transacciones que tienen comentario
+        if ($results) {
+            foreach ($results as $result) {
+                $commentsMap[$result['conciliation_id']] = true;
+            }
+        }
+        
+        return $commentsMap;
+    }
 }

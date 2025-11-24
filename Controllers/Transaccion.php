@@ -62,9 +62,30 @@ class Transaccion extends Controllers{
 
 		$arrData = $this->model->getTransaction($filters);
 		
-		// Agregar información de permisos para cada registro
-		foreach ($arrData as &$row) {
-			$row['can_delete'] = canDeleteTransactions();
+		// Agregar información de permisos y comentarios para cada registro
+		$canDelete = canDeleteTransactions(); // Calcular una sola vez
+		
+		try {
+			// Solo buscar comentarios si hay transacciones
+			$commentsMap = [];
+			if (!empty($arrData)) {
+				$commentModel = new CommentModel();
+				$transactionIds = array_column($arrData, 'id');
+				$commentsMap = $commentModel->getMultipleTransactionComments($transactionIds);
+			}
+			
+			// Aplicar permisos y comentarios de forma eficiente
+			foreach ($arrData as &$row) {
+				$row['can_delete'] = $canDelete;
+				$row['has_comment'] = $commentsMap[$row['id']] ?? false;
+			}
+		} catch (Exception $e) {
+			// Si hay error con comentarios, continuar sin ellos
+			error_log("Error al obtener comentarios: " . $e->getMessage());
+			foreach ($arrData as &$row) {
+				$row['can_delete'] = $canDelete;
+				$row['has_comment'] = false;
+			}
 		}
 		
 		echo json_encode(['data' => $arrData], JSON_UNESCAPED_UNICODE);
@@ -2808,12 +2829,8 @@ class Transaccion extends Controllers{
 		die();
 	}
 
-	/**
-	 * Crear comentario para una transacción
-	 * Method: POST (JSON)
-	 * Body: { conciliation_id, empresa_id, description }
-	 */
-	public function createComment()
+
+    public function createComment()
 	{
 		if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 			echo json_encode(['status' => false, 'message' => 'Método no permitido'], JSON_UNESCAPED_UNICODE);
