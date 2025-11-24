@@ -2377,11 +2377,12 @@ class Transaccion extends Controllers{
 			$rows = $sheet->toArray();
 
 			foreach ($rows as $fila) {
-				if (count($fila) > 4) {
-					$result = $this->procesarExcelProvincial1($filePath);
-					return $result;
-				}else if(count($fila) == 4){
+
+				if (count($fila) == 7) {
 					$result = $this->procesarExcelProvincial2($filePath);
+					return $result;
+				}else {
+					$result = $this->procesarExcelProvincial1($filePath);
 					return $result;
 				}
 			}
@@ -2398,7 +2399,11 @@ class Transaccion extends Controllers{
 
 	private function procesarExcelProvincial1($filePath)
 	{	
-
+		echo json_encode([
+			'success' => false,
+			'msg' => 'Formato en Manteniemiento'
+		]);
+		die();
 		try {
 			$spreadsheet = IOFactory::load($filePath);
 			$sheet = $spreadsheet->getActiveSheet();
@@ -2407,8 +2412,11 @@ class Transaccion extends Controllers{
 			$movimientos_transformados = [];
 			$totalMovimientos = 0;
 
+			dep($rows);
+			exit;
+			
 			// Asume que la primera fila son los encabezados
-			for ($i = 20; $i < count($rows); $i++) {
+			for ($i = 1; $i < count($rows); $i++) {
 				$fila = $rows[$i];
 				
 				if($fila[0] == ''){
@@ -2417,18 +2425,23 @@ class Transaccion extends Controllers{
 
 				$fecha = $this->detectarFormatoFecha($fila[0]);
 
-				$amount = $this->parseEuropeanNumber($fila[5]);
+				$amount = $this->parseEuropeanNumber($fila[2]);
+
+				$reference = str_replace(["'", '"'], '', preg_replace('/^.?([VJE])0(\d+).*$/', '\1\2', $fila[1]));
 
 				// Ajusta los índices [0], [1], [2] según el orden de tus columnas
 				$movimientos_transformados[] = [
 					'fecha'      => $fecha,  // Ej: "2024-01-01"
-					'referencia' => $fila[3],  // Ej: "123456"
+					'referencia' => $reference,  // Ej: "123456"
 					'monto'      => $amount,  // Ej: "100.00"
 				];
 				
 				$totalMovimientos++;
 			}
 
+			dep($movimientos_transformados);
+			exit;
+			
 			return [
 				'total' => $totalMovimientos,
 				'mov' => $movimientos_transformados
@@ -2457,17 +2470,21 @@ class Transaccion extends Controllers{
 			$totalMovimientos = 0;
 
 			// Asume que la primera fila son los encabezados
-			for ($i = 1; $i < count($rows); $i++) {
+			for ($i = 20; $i < count($rows); $i++) {
 				$fila = $rows[$i];
 				
+				if($fila[0] == ''){
+					continue;
+				}
 				$fecha = $this->detectarFormatoFecha($fila[0]);
 
-				$amount = $this->parseEuropeanNumber($fila[2]);
+				$amount = $this->parseEuropeanNumber($fila[5]);
 
+				$reference = str_replace(["'", '"'], '', preg_replace('/^.?([VJE])0(\d+).*$/', '\1\2', $fila[4]));
 				// Ajusta los índices [0], [1], [2] según el orden de tus columnas
 				$movimientos_transformados[] = [
 					'fecha'      => $fecha,  // Ej: "2024-01-01"
-					'referencia' => '0',  // Ej: "123456"
+					'referencia' => $reference,  // Ej: "123456"
 					'monto'      => $amount,  // Ej: "100.00"
 				];
 				

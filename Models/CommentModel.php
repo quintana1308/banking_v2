@@ -94,7 +94,7 @@ class CommentModel extends Mysql
     public function createComment($description)
     {
         $sql = "INSERT INTO comment (description) VALUES (?)";
-        $request = $this->insert($sql, [$description]);
+        $request = $this->insertID($sql, [$description]);
         return $request;
     }
 
