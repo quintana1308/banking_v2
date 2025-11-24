@@ -2412,9 +2412,6 @@ class Transaccion extends Controllers{
 			$movimientos_transformados = [];
 			$totalMovimientos = 0;
 
-			dep($rows);
-			exit;
-			
 			// Asume que la primera fila son los encabezados
 			for ($i = 1; $i < count($rows); $i++) {
 				$fila = $rows[$i];
@@ -2438,9 +2435,6 @@ class Transaccion extends Controllers{
 				
 				$totalMovimientos++;
 			}
-
-			dep($movimientos_transformados);
-			exit;
 			
 			return [
 				'total' => $totalMovimientos,
@@ -2455,6 +2449,44 @@ class Transaccion extends Controllers{
 			]);
 			die();
 		}
+	}
+
+	/**
+	 * Procesa la referencia bancaria según el formato específico
+	 * @param string $descripcion Descripción del movimiento (ej: TRAV0014228714000020968)
+	 * @param string $columnaAlternativa Columna alternativa (ej: 0000139740)
+	 * @param string $fecha Fecha del movimiento
+	 * @return string Referencia procesada
+	 */
+	private function procesarReferenciaBancaria($descripcion, $columnaAlternativa, $fecha)
+	{
+		// Limpiar la descripción
+		$descripcion = trim($descripcion);
+		
+		// Si inicia con TRA, procesar formato especial
+		if (strpos($descripcion, 'TRA') === 0) {
+			// Estructura: TRA + [V/J] + [00/000] + cedula + referencia
+			// Ejemplos: 
+			// - TRAV0030019249000017555 (TRA + V00 + 30019249 + 000017555)
+			// - TRAJ00014228714000020968 (TRA + J000 + 14228714 + 000020968)
+			
+			$patron = '/^TRA([VJ])0*(\d+)(\d{9})$/';
+			if (preg_match($patron, $descripcion, $matches)) {
+				$tipoPersona = $matches[1]; // V o J
+				$cedula = $matches[2];      // cedula (ej: 30019249)
+				$referencia = $matches[3];  // referencia (ej: 000017555)
+				
+				// Formato: dmYFVCedula
+				$fechaFormateada = date('dmY', strtotime($fecha));
+				return $fechaFormateada . 'F' . $tipoPersona . $cedula;
+			}
+		}
+		
+		// Si no inicia con TRA, usar columna alternativa
+		// Limpiar comilla inicial y remover ceros a la izquierda: '0000139740 -> 139740
+		$columnaLimpia = ltrim($columnaAlternativa, "'"); // Remover comilla inicial
+		$referencia = ltrim($columnaLimpia, '0'); // Remover ceros a la izquierda
+		return $referencia ?: '0'; // Si queda vacío, usar '0'
 	}
 
 	//PROCESO DE BANCO PROVINCIAL (EXCEL - PAGO MOVIL)
@@ -2480,7 +2512,8 @@ class Transaccion extends Controllers{
 
 				$amount = $this->parseEuropeanNumber($fila[5]);
 
-				$reference = str_replace(["'", '"'], '', preg_replace('/^.?([VJE])0(\d+).*$/', '\1\2', $fila[4]));
+				// Procesar referencia según el formato específico
+				$reference = $this->procesarReferenciaBancaria($fila[4], $fila[3], $fecha);
 				// Ajusta los índices [0], [1], [2] según el orden de tus columnas
 				$movimientos_transformados[] = [
 					'fecha'      => $fecha,  // Ej: "2024-01-01"
@@ -2489,7 +2522,7 @@ class Transaccion extends Controllers{
 				];
 				
 				$totalMovimientos++;
-			}			
+			}
 
 			return [
 				'total' => $totalMovimientos,
