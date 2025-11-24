@@ -264,9 +264,7 @@ ob_start();
                                     <th>RESPONSABLE</th>
                                     <th>ASIGNADO</th>
                                     <th>ESTADO</th>
-                                    <?php if($data['can_delete_transactions']): ?>
                                     <th>ACCIONES</th>
-                                    <?php endif; ?>
                                 </tr>
                             </thead>
                             <tbody>

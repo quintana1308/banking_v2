@@ -9,9 +9,13 @@ document.addEventListener('DOMContentLoaded', function () {
         hiddenColumns = []; 
     }
 
-    // Agregar columna de eliminar (índice 10) a columnas ocultas si el usuario no tiene permisos
-    if (typeof canDeleteTransactions !== 'undefined' && !canDeleteTransactions) {
-        hiddenColumns.push(10); // Columna de acciones/eliminar
+    // Ocultar columna de ACCIONES solo si el usuario NO tiene ningún permiso
+    const hasDeletePermission = typeof canDeleteTransactions !== 'undefined' && canDeleteTransactions;
+    const hasCommentPermission = typeof canComment !== 'undefined' && canComment;
+    
+    // Solo ocultar la columna si NO tiene permisos de eliminar NI de comentar
+    if (!hasDeletePermission && !hasCommentPermission) {
+        hiddenColumns.push(9); // Columna de acciones
     }
 
     tableTransaction = $('#transaction-list-table').DataTable({
@@ -59,9 +63,9 @@ document.addEventListener('DOMContentLoaded', function () {
                   return start + meta.row + 1;
                 }
             }, //0
-            { data: 'bank' }, //1
-            { data: 'account' }, //2
-            { data: 'reference' }, //3
+            { data: 'bank' }, // 1 - NOMBRE DEL BANCO
+            { data: 'account' }, //2 - NUMERO DE LA CUENTA
+            { data: 'reference' }, //3 - REFERENCIA
             { 
                 data: 'date',
                 render: function (data, type, row) {
@@ -83,7 +87,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                     return data;
                 }
-            }, // 4
+            }, // 4 - FECHA DE LA TRANSACCION
             {
                 "data": "amount",
                 "className": "text-end",
@@ -95,20 +99,23 @@ document.addEventListener('DOMContentLoaded', function () {
                     const color = !isNaN(num) && num >= 0 ? 'green' : 'red';
                     return '<span class="d-block" style="color:' + color + ';">' + formatted + '</span>';
                 }
-            }, // 5
-            { data: 'responsible' }, // 6
+            }, // 5 - MONTO DE LA TRANSACCION
+            { data: 'responsible' }, // 6 - NOMBRE DEL RESPONSABLE
             {
                 "data": "id",
                 "render": function (data, type, row) {
                     if (row.id_user) {
                         return `<span class="badge bg-success" style="cursor: default;">${row.name_user}</span>`;
                     } else {
-                        return `<button class="btn btn-primary btn-sm btn-asignar" data-id="${data}">Asignar</button>`;
+                        return `<button class="btn btn-primary btn-sm btn-asignar" data-id="${data}"
+                        style="width: 32px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; margin-right: 4px; border-radius: 5px !important;">
+                        <i class="fa-solid fa-hand"></i>
+                        </button>`;
                     }
                 },
                 "orderable": false,
                 "searchable": false
-            }, // 7
+            }, // 7 - ASIGNADO
             { 
                 data: 'status_name',
                 render: function (data, type, row) {
@@ -140,7 +147,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     
                     return `<i class="${icon} ${colorClass}" title="${data}"></i> <span class="ms-1">${data}</span>`;
                 }
-            }, // 8
+            }, // 8 - ESTADO
             {
                 data: null,
                 orderable: false,
@@ -193,14 +200,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                     
                     // Botón de eliminar
-                    if (row.can_delete) {
+                    if (typeof canDeleteTransactions !== 'undefined' && canDeleteTransactions && row.can_delete) {
                         actions += `<button class="btn btn-danger btn-sm btn-delete" data-id="${row.id}" title="Eliminar transacción"
                                            style="width: 32px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center;">
                                         <i class="fas fa-trash"></i>
                                     </button>`;
-                    } else {
-                        actions += '<span class="text-muted" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;">-</span>';
+                    } else if (typeof canDeleteTransactions !== 'undefined' && canDeleteTransactions) {
+                        // Usuario tiene permisos pero esta transacción específica no se puede eliminar
+                        actions += '<span class="text-muted" title="Esta transacción no se puede eliminar" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;"><i class="fas fa-ban"></i></span>';
                     }
+                    // Si no tiene permisos de eliminar, no mostrar nada (solo comentarios)
                     
                     return actions;
                 },
