@@ -503,6 +503,27 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
                 return false;
             } else {
+                // Mostrar confirmación antes de procesar
+                const result = await Swal.fire({
+                    title: '¿Confirmar subida de archivo?',
+                    text: `¿Estás seguro de que deseas procesar el archivo para ${strBanco} del período ${strMes}/${strAnio}?`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, procesar',
+                    cancelButtonText: 'Cancelar',
+                    background: '#19233adb',
+                    color: '#fff',
+                    customClass: {
+                        popup: 'futuristic-popup',
+                        confirmButton: 'btn-primary-futuristic',
+                        cancelButton: 'btn-secondary-futuristic'
+                    }
+                });
+
+                // Si el usuario cancela, no continuar
+                if (!result.isConfirmed) {
+                    return false;
+                }
 
                 try {
                     // Mostrar overlay de carga con progreso
