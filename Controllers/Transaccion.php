@@ -5,6 +5,7 @@
 	use PhpOffice\PhpSpreadsheet\Style\Fill;
 	use PhpOffice\PhpSpreadsheet\Style\Border;
 	use PhpOffice\PhpSpreadsheet\Style\Alignment;
+	use PhpOffice\PhpSpreadsheet\IOFactory;
 	
 	// Incluir el modelo de comentarios
 	require_once dirname(__DIR__) . '/Models/CommentModel.php';
@@ -771,7 +772,7 @@ class Transaccion extends Controllers{
 				$bancoParts = explode('.', $banco);
 				$bancoId = $bancoParts[0] ?? null;
 				$bancoPrefijo = $bancoParts[1] ?? null;
-				
+
 				$movimientosFormat = [];
 				switch ($bancoPrefijo) {
 					case 'SFT': $movimientosFormat = $this->procesarExcelSofitasa($uploadPath); break;
@@ -2380,7 +2381,6 @@ class Transaccion extends Controllers{
 			$rows = $sheet->toArray();
 
 			foreach ($rows as $fila) {
-
 				if (count($fila) == 7) {
 					$result = $this->procesarExcelProvincial2($filePath);
 					return $result;
@@ -2402,11 +2402,6 @@ class Transaccion extends Controllers{
 
 	private function procesarExcelProvincial1($filePath)
 	{	
-		echo json_encode([
-			'success' => false,
-			'msg' => 'Formato en Manteniemiento'
-		]);
-		die();
 		try {
 			$spreadsheet = IOFactory::load($filePath);
 			$sheet = $spreadsheet->getActiveSheet();
@@ -2425,14 +2420,14 @@ class Transaccion extends Controllers{
 
 				$fecha = $this->detectarFormatoFecha($fila[0]);
 
-				$amount = $this->parseEuropeanNumber($fila[2]);
+				$amount = $this->parseEuropeanNumber($fila[3]);
 
-				$reference = str_replace(["'", '"'], '', preg_replace('/^.?([VJE])0(\d+).*$/', '\1\2', $fila[1]));
-
+				//$reference = str_replace(["'", '"'], '', preg_replace('/^.?([VJE])0(\d+).*$/', '\1\2', $fila[1]));
+				//$reference = $this->procesarReferenciaBancaria($fila[4], $fila[3], $fecha);
 				// Ajusta los índices [0], [1], [2] según el orden de tus columnas
 				$movimientos_transformados[] = [
 					'fecha'      => $fecha,  // Ej: "2024-01-01"
-					'referencia' => $reference,  // Ej: "123456"
+					'referencia' => $fila[1],  // Ej: "123456"
 					'monto'      => $amount,  // Ej: "100.00"
 				];
 				
