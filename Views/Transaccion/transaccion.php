@@ -232,6 +232,11 @@ ob_start();
                                 <i class="fas fa-sync-alt me-2"></i>
                                 Recargar
                             </button>
+                            <button id="btnExportExcel" class="btn-secondary-futuristic text-decoration-none" title="Exportar a Excel">
+                                <span class="btn-glow"></span>
+                                <i class="fas fa-file-excel me-2"></i>
+                                Exportar Excel
+                            </button>
                             <a href="<?= base_url() ?>/transaccion/newTransaction" class="btn-primary-futuristic text-decoration-none">
                                 <span class="btn-glow"></span>
                                 <i class="fas fa-plus me-2"></i>

@@ -1,6 +1,10 @@
 <?php 
 	include dirname(__DIR__) . '/vendor/autoload.php';
-	use PhpOffice\PhpSpreadsheet\IOFactory;
+	use PhpOffice\PhpSpreadsheet\Spreadsheet;
+	use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+	use PhpOffice\PhpSpreadsheet\Style\Fill;
+	use PhpOffice\PhpSpreadsheet\Style\Border;
+	use PhpOffice\PhpSpreadsheet\Style\Alignment;
 	
 	// Incluir el modelo de comentarios
 	require_once dirname(__DIR__) . '/Models/CommentModel.php';
@@ -2957,6 +2961,408 @@ class Transaccion extends Controllers{
 			'comment' => $newComment
 		], JSON_UNESCAPED_UNICODE);
 		die();
+	}
+
+	/**
+	 * Exportar transacciones filtradas a Excel
+	 * Exporta exactamente los datos que están visibles en la tabla con filtros aplicados
+	 */
+	public function exportToExcel()
+	{
+		// Terminar y limpiar TODOS los buffers de salida
+		while (ob_get_level()) {
+			ob_end_clean();
+		}
+		
+		try {
+			// Verificar que sea una petición POST
+			if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+				http_response_code(405);
+				header('Content-Type: application/json');
+				echo json_encode(['status' => false, 'message' => 'Método no permitido'], JSON_UNESCAPED_UNICODE);
+				exit();
+			}
+
+			// Verificar si PhpSpreadsheet está disponible
+			if (!class_exists('PhpOffice\PhpSpreadsheet\Spreadsheet')) {
+				header('Content-Type: application/json');
+				echo json_encode(['status' => false, 'message' => 'PhpSpreadsheet no está instalado'], JSON_UNESCAPED_UNICODE);
+				exit();
+			}
+
+			// Obtener filtros del POST (los mismos que usa el DataTable)
+			$rawInput = file_get_contents('php://input');
+			$input = json_decode($rawInput, true);
+			
+			if (json_last_error() !== JSON_ERROR_NONE) {
+				error_log("Error JSON en exportToExcel: " . json_last_error_msg() . " - Input: " . $rawInput);
+				header('Content-Type: application/json');
+				echo json_encode(['status' => false, 'message' => 'Error al procesar los filtros JSON: ' . json_last_error_msg()], JSON_UNESCAPED_UNICODE);
+				exit();
+			}
+
+			$filters = [
+				'bank'     => $input['bank']     ?? '',
+				'account'  => $input['account']  ?? '',
+				'reference'=> $input['reference']?? '',
+				'date'     => $input['date']     ?? '',
+				'estado'   => $input['estado']   ?? '',
+				'monto'    => $input['monto']    ?? '',
+			];
+
+			// Log de filtros para debug
+			error_log("Filtros para exportar: " . json_encode($filters));
+
+			// Obtener los datos usando el mismo método que el DataTable
+			$arrData = $this->model->getTransaction($filters);
+			
+			// Log de cantidad de datos
+			error_log("Datos obtenidos para exportar: " . count($arrData) . " registros");
+
+			if (empty($arrData)) {
+				header('Content-Type: application/json');
+				echo json_encode(['status' => false, 'message' => 'No hay datos para exportar con los filtros aplicados'], JSON_UNESCAPED_UNICODE);
+				exit();
+			}
+
+			// Crear nuevo spreadsheet
+			$spreadsheet = new Spreadsheet();
+			$sheet = $spreadsheet->getActiveSheet();
+
+			// Configurar encabezados
+			$headers = ['Nº', 'BANCO', 'CUENTA', 'REFERENCIA', 'FECHA', 'MONTO', 'RESPONSABLE', 'ASIGNADO', 'ESTADO'];
+			$sheet->fromArray($headers, null, 'A1');
+
+			// Aplicar estilos a los encabezados
+			$headerStyle = [
+				'font' => [
+					'bold' => true,
+					'color' => ['rgb' => 'FFFFFF'],
+					'size' => 12
+				],
+				'fill' => [
+					'fillType' => Fill::FILL_SOLID,
+					'startColor' => ['rgb' => '667eea']
+				],
+				'alignment' => [
+					'horizontal' => Alignment::HORIZONTAL_CENTER,
+					'vertical' => Alignment::VERTICAL_CENTER
+				],
+				'borders' => [
+					'allBorders' => [
+						'borderStyle' => Border::BORDER_THIN,
+						'color' => ['rgb' => '000000']
+					]
+				]
+			];
+			$sheet->getStyle('A1:I1')->applyFromArray($headerStyle);
+
+			// Log del primer registro para debug
+			if (!empty($arrData)) {
+				error_log("Primer registro de datos: " . json_encode($arrData[0]));
+			}
+
+			// Agregar datos
+			$row = 2;
+			foreach ($arrData as $index => $data) {
+				try {
+					// Formatear fecha de forma más segura
+					$formattedDate = '';
+					if (!empty($data['date'])) {
+						if (strpos($data['date'], '-') !== false) {
+							$dateParts = explode('-', $data['date']);
+							if (count($dateParts) === 3) {
+								$formattedDate = $dateParts[2] . '/' . $dateParts[1] . '/' . $dateParts[0];
+							} else {
+								$formattedDate = $data['date'];
+							}
+						} else {
+							$formattedDate = $data['date'];
+						}
+					}
+
+					// Formatear monto de forma más segura
+					$formattedAmount = '';
+					if (isset($data['amount']) && $data['amount'] !== '') {
+						if (is_numeric($data['amount'])) {
+							$formattedAmount = number_format((float)$data['amount'], 2, '.', ',');
+						} else {
+							$formattedAmount = $data['amount'];
+						}
+					}
+
+					// Determinar estado de forma más segura
+					$estado = 'Desconocido';
+					
+					// Verificar diferentes posibles nombres del campo de estado
+					$statusValue = null;
+					if (isset($data['status'])) {
+						$statusValue = $data['status'];
+					} elseif (isset($data['estado'])) {
+						$statusValue = $data['estado'];
+					} elseif (isset($data['id_status'])) {
+						$statusValue = $data['id_status'];
+					} elseif (isset($data['status_id'])) {
+						$statusValue = $data['status_id'];
+					}
+					
+					// Colores de fondo según estado
+					$backgroundColor = 'FFFFFF'; // Blanco por defecto
+					
+					if ($statusValue !== null) {
+						switch ((int)$statusValue) {
+							case 1:
+								$estado = 'No Conciliado';
+								$backgroundColor = 'FFEBEE'; // Rojito suave
+								break;
+							case 2:
+								$estado = 'Conciliado';
+								$backgroundColor = 'E8F5E8'; // Verdecito suave
+								break;
+							case 3:
+								$estado = 'Parcial';
+								$backgroundColor = 'FFF8E1'; // Amarillito suave
+								break;
+							case 4:
+								$estado = 'Asignado';
+								$backgroundColor = 'E3F2FD'; // Azulito suave
+								break;
+							default:
+								$estado = 'Desconocido (' . $statusValue . ')';
+								$backgroundColor = 'F5F5F5'; // Gris suave
+						}
+					} else {
+						// Log para debug: mostrar las claves disponibles
+						error_log("Claves disponibles en datos: " . implode(', ', array_keys($data)));
+					}
+
+					$rowData = [
+						$index + 1,                           // Nº
+						$data['bank'] ?? '',                  // BANCO
+						$data['account'] ?? '',               // CUENTA
+						$data['reference'] ?? '',             // REFERENCIA
+						$formattedDate,                       // FECHA
+						$formattedAmount,                     // MONTO
+						$data['responsible'] ?? '',           // RESPONSABLE
+						$data['assigned'] ?? '',              // ASIGNADO
+						$estado                               // ESTADO
+					];
+
+					$sheet->fromArray($rowData, null, 'A' . $row);
+					
+					// Aplicar color de fondo a la fila según el estado
+					$rowRange = 'A' . $row . ':I' . $row;
+					$rowStyle = [
+						'fill' => [
+							'fillType' => Fill::FILL_SOLID,
+							'startColor' => ['rgb' => $backgroundColor]
+						]
+					];
+					$sheet->getStyle($rowRange)->applyFromArray($rowStyle);
+					
+					$row++;
+					
+				} catch (Exception $e) {
+					error_log("Error procesando fila $index: " . $e->getMessage() . " - Datos: " . json_encode($data));
+					// Continuar con la siguiente fila
+					continue;
+				}
+			}
+			
+			error_log("Filas procesadas exitosamente: " . ($row - 2));
+
+			// Aplicar estilos a los datos
+			$dataRange = 'A2:I' . ($row - 1);
+			$dataStyle = [
+				'borders' => [
+					'allBorders' => [
+						'borderStyle' => Border::BORDER_THIN,
+						'color' => ['rgb' => 'CCCCCC']
+					]
+				],
+				'alignment' => [
+					'vertical' => Alignment::VERTICAL_CENTER
+				]
+			];
+			$sheet->getStyle($dataRange)->applyFromArray($dataStyle);
+
+			// Ajustar ancho de columnas
+			foreach (range('A', 'I') as $col) {
+				$sheet->getColumnDimension($col)->setAutoSize(true);
+			}
+
+			// Configurar propiedades del documento
+			$spreadsheet->getProperties()
+				->setCreator('Banking ADN')
+				->setTitle('Reporte de Transacciones')
+				->setSubject('Exportación de transacciones bancarias')
+				->setDescription('Reporte generado desde Banking ADN con filtros aplicados')
+				->setKeywords('transacciones bancarias excel reporte')
+				->setCategory('Reportes');
+
+			// Generar nombre de archivo con timestamp
+			$timestamp = date('Y-m-d_H-i-s');
+			$filename = "transacciones_" . $timestamp . ".xlsx";
+
+			// Log antes de generar el archivo
+			error_log("Iniciando generación del archivo Excel...");
+			
+			// Limpiar cualquier salida adicional antes de enviar headers
+			while (ob_get_level()) {
+				ob_end_clean();
+			}
+			
+			// Configurar headers para descarga
+			header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+			header('Content-Disposition: attachment;filename="' . $filename . '"');
+			header('Cache-Control: max-age=0');
+			header('Cache-Control: max-age=1');
+			header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
+			header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
+			header('Cache-Control: cache, must-revalidate');
+			header('Pragma: public');
+
+			error_log("Headers configurados, creando writer...");
+
+			// Crear writer y enviar archivo
+			$writer = new Xlsx($spreadsheet);
+			
+			error_log("Writer creado, guardando archivo...");
+			
+			$writer->save('php://output');
+			
+			error_log("Archivo guardado exitosamente");
+			
+			// Limpiar memoria
+			$spreadsheet->disconnectWorksheets();
+			unset($spreadsheet);
+			
+			exit();
+
+		} catch (Exception $e) {
+			error_log("Error en exportToExcel: " . $e->getMessage());
+			http_response_code(500);
+			header('Content-Type: application/json');
+			echo json_encode([
+				'status' => false, 
+				'message' => 'Error al generar el archivo Excel: ' . $e->getMessage()
+			], JSON_UNESCAPED_UNICODE);
+			exit();
+		} catch (Error $e) {
+			error_log("Error fatal en exportToExcel: " . $e->getMessage());
+			http_response_code(500);
+			header('Content-Type: application/json');
+			echo json_encode([
+				'status' => false, 
+				'message' => 'Error fatal al generar el archivo Excel: ' . $e->getMessage()
+			], JSON_UNESCAPED_UNICODE);
+			exit();
+		}
+	}
+
+	/**
+	 * Método de prueba básico para Excel - sin usar modelo
+	 */
+	public function testBasicExcel()
+	{
+		// Terminar y limpiar TODOS los buffers de salida
+		while (ob_get_level()) {
+			ob_end_clean();
+		}
+		
+		try {
+			// Crear spreadsheet con datos hardcodeados
+			$spreadsheet = new Spreadsheet();
+			$sheet = $spreadsheet->getActiveSheet();
+
+			// Datos de prueba hardcodeados
+			$headers = ['Banco', 'Cuenta', 'Referencia', 'Fecha', 'Monto'];
+			$sheet->fromArray($headers, null, 'A1');
+
+			// Datos de ejemplo
+			$testData = [
+				['Banco Ejemplo', '12345678', 'REF001', '2023-11-25', '1000.00'],
+				['Banco Test', '87654321', 'REF002', '2023-11-24', '2500.50'],
+				['Banco Demo', '11223344', 'REF003', '2023-11-23', '750.25']
+			];
+
+			$row = 2;
+			foreach ($testData as $rowData) {
+				$sheet->fromArray($rowData, null, 'A' . $row);
+				$row++;
+			}
+
+			// Configurar headers para descarga
+			$filename = "test_basic.xlsx";
+			
+			header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+			header('Content-Disposition: attachment;filename="' . $filename . '"');
+			header('Cache-Control: max-age=0');
+			header('Pragma: public');
+
+			// Crear writer y enviar
+			$writer = new Xlsx($spreadsheet);
+			$writer->save('php://output');
+			
+			exit();
+
+		} catch (Exception $e) {
+			header('Content-Type: text/plain');
+			echo "Error: " . $e->getMessage();
+			exit();
+		}
+	}
+
+	/**
+	 * Método de diagnóstico - solo verifica si PhpSpreadsheet funciona
+	 */
+	public function diagnosticExcel()
+	{
+		// Limpiar TODOS los buffers
+		while (ob_get_level()) {
+			ob_end_clean();
+		}
+		
+		header('Content-Type: text/plain');
+		
+		echo "=== DIAGNÓSTICO PHPSPREADSHEET ===\n\n";
+		
+		// Verificar si la clase existe
+		if (class_exists('PhpOffice\PhpSpreadsheet\Spreadsheet')) {
+			echo "✓ PhpSpreadsheet está disponible\n";
+		} else {
+			echo "✗ PhpSpreadsheet NO está disponible\n";
+			exit();
+		}
+		
+		// Intentar crear un spreadsheet
+		try {
+			$spreadsheet = new Spreadsheet();
+			echo "✓ Spreadsheet creado exitosamente\n";
+			
+			$sheet = $spreadsheet->getActiveSheet();
+			echo "✓ Hoja activa obtenida\n";
+			
+			$sheet->setCellValue('A1', 'Test');
+			echo "✓ Valor establecido en celda\n";
+			
+			$writer = new Xlsx($spreadsheet);
+			echo "✓ Writer Xlsx creado\n";
+			
+			// Intentar guardar en memoria
+			ob_start();
+			$writer->save('php://output');
+			$content = ob_get_contents();
+			ob_end_clean();
+			
+			echo "✓ Archivo generado en memoria (" . strlen($content) . " bytes)\n";
+			echo "\n=== DIAGNÓSTICO COMPLETADO ===\n";
+			
+		} catch (Exception $e) {
+			echo "✗ Error: " . $e->getMessage() . "\n";
+		}
+		
+		exit();
 	}
 }
 ?>

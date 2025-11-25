@@ -274,7 +274,93 @@ document.addEventListener('DOMContentLoaded', function () {
         if (e.target && e.target.id === 'btnReloadTable') {
             reloadTransactionTable();
         }
+        
+        // Event listener para el botón de exportar Excel
+        if (e.target && e.target.id === 'btnExportExcel') {
+            exportToExcel();
+        }
     });
+
+    // Función para exportar a Excel
+    function exportToExcel() {
+        const btnExport = document.getElementById('btnExportExcel');
+        if (!btnExport) return;
+
+        // Mostrar indicador de carga en el botón
+        const originalHTML = btnExport.innerHTML;
+        btnExport.innerHTML = '<span class="btn-glow"></span><i class="fas fa-spinner fa-spin me-2"></i>Generando Excel...';
+        btnExport.disabled = true;
+
+        // Obtener los filtros actuales (los mismos que usa el DataTable)
+        const filters = {
+            bank: $('#filtroBank').val() || '',
+            account: $('#filtroAccount').val() || '',
+            reference: $('#filtroReference').val() || '',
+            date: $('#filtroDate').val() || '',
+            estado: $('#filtroEstado').val() || '',
+            monto: $('#filtroMonto').val() || ''
+        };
+
+        // Realizar petición para exportar
+        fetch(base_url + '/transaccion/exportToExcel', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(filters)
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => Promise.reject(err));
+            }
+            
+            // Si la respuesta es exitosa, descargar el archivo
+            return response.blob();
+        })
+        .then(blob => {
+            // Crear URL para el blob y descargar
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            
+            // Generar nombre de archivo con timestamp
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+            a.download = `transacciones_${timestamp}.xlsx`;
+            
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            // Mostrar mensaje de éxito
+            Swal.fire({
+                title: '¡Exportación Exitosa!',
+                text: 'El archivo Excel se ha descargado correctamente',
+                icon: 'success',
+                timer: 3000,
+                showConfirmButton: false,
+                toast: true,
+                position: 'top-end'
+            });
+        })
+        .catch(error => {
+            console.error('Error al exportar:', error);
+            
+            // Mostrar mensaje de error
+            Swal.fire({
+                title: 'Error al Exportar',
+                text: error.message || 'Ocurrió un error al generar el archivo Excel',
+                icon: 'error',
+                confirmButtonText: 'Entendido'
+            });
+        })
+        .finally(() => {
+            // Restaurar el botón
+            btnExport.innerHTML = originalHTML;
+            btnExport.disabled = false;
+        });
+    }
 
     // Variables globales para almacenar todos los datos originales
     let originalTransactionData = [];
