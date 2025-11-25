@@ -2424,11 +2424,11 @@ class Transaccion extends Controllers{
 				$amount = $this->parseEuropeanNumber($fila[3]);
 
 				//$reference = str_replace(["'", '"'], '', preg_replace('/^.?([VJE])0(\d+).*$/', '\1\2', $fila[1]));
-				//$reference = $this->procesarReferenciaBancaria($fila[4], $fila[3], $fecha);
+				$reference = $this->procesarReferenciaBancaria($fila[2], $fila[1], $fecha);
 				// Ajusta los índices [0], [1], [2] según el orden de tus columnas
 				$movimientos_transformados[] = [
 					'fecha'      => $fecha,  // Ej: "2024-01-01"
-					'referencia' => $fila[1],  // Ej: "123456"
+					'referencia' => $reference,  // Ej: "123456"
 					'monto'      => $amount,  // Ej: "100.00"
 				];
 				
