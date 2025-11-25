@@ -471,7 +471,7 @@
 				$sqlReset = "UPDATE $table c 
 							 SET c.status_id = 1 
 							 WHERE ($whereFechas) 
-							 AND c.status_id IN (2, 3, 4)";
+							 AND c.status_id IN (2, 3)";
 				
 				$this->update_massive($sqlReset);
 			}
