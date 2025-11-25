@@ -365,7 +365,7 @@ class Transaccion extends Controllers{
 			
 			$fileExt = strtolower(pathinfo($archivo['name'], PATHINFO_EXTENSION));
 			
-			if (!in_array($fileExt, ['pdf', 'xls', 'xlsx', 'txt'])) {
+			if (!in_array($fileExt, ['pdf', 'xls', 'xlsx', 'txt', 'csv'])) {
 				$arrResponse = array('status' => false, 'msg' => 'Formato de archivo no soportado.' );
 				echo json_encode($arrResponse,JSON_UNESCAPED_UNICODE);
 				die();
@@ -759,6 +759,54 @@ class Transaccion extends Controllers{
 				
 					echo json_encode($arrResponse,JSON_UNESCAPED_UNICODE);
 					die();
+
+			} else if($fileExt === 'csv'){
+				
+				//CONDICION IF DEL CSV (INICIO)
+				if (!move_uploaded_file($tmpName, $uploadPath)) {
+					$arrResponse = array('status' => true, 'msg' => 'No se pudo guardar el archivo en el servidor.' );
+					echo json_encode($arrResponse,JSON_UNESCAPED_UNICODE);
+					die();
+				}
+
+				$bancoParts = explode('.', $banco);
+				$bancoId = $bancoParts[0] ?? null;
+				$bancoPrefijo = $bancoParts[1] ?? null;
+
+				$movimientosFormat = [];
+				switch ($bancoPrefijo) {
+					case 'BAC': $movimientosFormat = $this->procesarCsvBancaribe($uploadPath); break;
+					
+				}
+
+				// Validación de estructura antes de acceder a ['mov']
+				if (!is_array($movimientosFormat) || !isset($movimientosFormat['mov']) || !is_array($movimientosFormat['mov'])) {
+					// Eliminar archivo temporal y responder error claro
+					unlink($uploadPath);
+					echo json_encode([
+						'status' => false,
+						'msg' => 'Banco/prefijo no soportado o no se obtuvieron movimientos del archivo (Csv). Prefijo: ' . (string)$bancoPrefijo
+					], JSON_UNESCAPED_UNICODE);
+					die();
+				}
+
+				$inserted = $this->model->insertTransaction($anio, $mes, $bancoId, $movimientosFormat['mov']);
+					
+				// Eliminar archivo temporal
+				unlink($uploadPath);
+					
+				if($inserted['status']){
+					if($inserted['error'] == 1){
+						$arrResponse = array('status' => false, 'msg' => 'Hubo un problema y no se subieron movimientos.' );
+					}else{
+						$arrResponse = array('status' => true, 'msg' => 'Se procesaron '.$inserted['total_processed'].' movimientos, Se insertaron '.$inserted['inserted'].' y se omitieron '.$inserted['duplicates_skipped'].'.');
+					}
+				}else{
+					$arrResponse = array('status' => false, 'msg' => 'Hubo un problema y no se subieron movimientos.' );
+				}
+				
+				echo json_encode($arrResponse,JSON_UNESCAPED_UNICODE);
+				die();
 
 			}else {
 				//CONDICION IF DEL EXCEL (INICIO)
@@ -2590,6 +2638,87 @@ class Transaccion extends Controllers{
 			]);
 			die();
 		}
+	}
+
+
+	//------ PROCESO ARCHIVOS EN CSV -------//
+
+	//PROCESO DE BANCO BANCARIBE (CSV)
+	private function procesarCsvBancaribe($filePath)
+	{	
+		
+		try {
+
+			if (($handle = fopen($filePath, "r")) !== false) {
+				
+				$movimientos_transformados = [];
+				$totalMovimientos = 0;
+				$lineNumber = 0;
+				
+				while (($data = fgetcsv($handle, 1000, ';')) !== false) {
+					$lineNumber++;
+					
+					// Saltar la primera línea que contiene información de la cuenta
+					if ($lineNumber == 1) {
+						continue;
+					}
+					
+					// Validar que tenga al menos 9 columnas (estructura completa)
+					if (count($data) >= 9) {
+						
+						// Extraer datos de cada columna
+						$fechaRaw = trim($data[0]);      // 18/11/2025
+						$referencia = trim($data[1]);    // 8,21707E+11
+						$descripcion = trim($data[2]);   // DEPOSITO A TERCEROS
+						$tipo = trim($data[3]);          // D o C
+						$montoRaw = trim($data[4]);      // 554.730,00
+						
+						// Validar que los campos obligatorios no estén vacíos
+						if (empty($fechaRaw) || empty($referencia) || empty($montoRaw) || empty($tipo)) {
+							continue;
+						}
+						
+						// Convertir fecha de dd/mm/yyyy a yyyy-mm-dd
+						$fecha = DateTime::createFromFormat('d/m/Y', $fechaRaw)->format('Y-m-d');
+						
+						// Procesar el monto usando la función parseEuropeanNumber
+						$amount = $this->parseEuropeanNumber($montoRaw);
+						
+						// Determinar el signo del monto según el tipo
+						if ($tipo == 'D') {
+							// Débito: monto negativo
+							$monto = '-' . $amount;
+						} else {
+							// Crédito: monto positivo
+							$monto = $amount;
+						}
+						
+						$movimientos_transformados[] = [
+							'fecha'      => $fecha,
+							'referencia' => $referencia,
+							'monto'      => $monto
+						];
+						
+						$totalMovimientos++;
+					}
+				}
+				fclose($handle);
+			}
+
+			return [
+				'total' => $totalMovimientos,
+				'mov' => $movimientos_transformados
+			];
+
+		} catch (Exception $e) {
+			if (file_exists($filePath)) unlink($filePath);
+			echo json_encode([
+				'success' => false,
+				'msg' => 'Archivo CSV esta dañado.'
+			]);
+			die();
+		}
+
 	}
 
 	//------ PROCESO ARCHIVOS EN TXT -------//
