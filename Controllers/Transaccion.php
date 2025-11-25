@@ -786,6 +786,8 @@ class Transaccion extends Controllers{
 					case 'ACT': $movimientosFormat = $this->procesarExcelActivo($uploadPath); break;
 					case 'TSR': $movimientosFormat = $this->procesarExcelTesoro($uploadPath); break;
 					case 'PRV': $movimientosFormat = $this->procesarExcelProvincial($uploadPath); break;
+					case 'BAC': $movimientosFormat = $this->procesarExcelBancaribe($uploadPath); break;
+					
 				}
 					// Validación de estructura antes de acceder a ['mov']
 					if (!is_array($movimientosFormat) || !isset($movimientosFormat['mov']) || !is_array($movimientosFormat['mov'])) {
@@ -1930,6 +1932,58 @@ class Transaccion extends Controllers{
 				$movimientos_transformados[] = [
 					'fecha'      => $fecha,  // Ej: "2024-01-01"
 					'referencia' => $referencia,  // Ej: "123456"
+					'monto'      => $monto,  // Ej: "100.00"
+				];
+				
+				$totalMovimientos++;
+			}
+
+			return [
+				'total' => $totalMovimientos,
+				'mov' => $movimientos_transformados
+				];
+
+		} catch (Exception $e) {
+			if (file_exists($filePath)) unlink($filePath);
+			echo json_encode([
+				'success' => false,
+				'msg' => 'Archivo Excel esta dañado y/o absoleto.'
+			]);
+			die();
+		}
+	}
+
+	//PROCESO DE BANCO BANCARIBE (EXCEL)
+	private function procesarExcelBancaribe($filePath)
+	{	
+		
+		try {
+			$spreadsheet = IOFactory::load($filePath);
+			$sheet = $spreadsheet->getActiveSheet();
+			$rows = $sheet->toArray();
+			
+			$movimientos_transformados = [];
+			$totalMovimientos = 0;
+			
+			// Asume que la primera fila son los encabezados
+			for ($i = 1; $i < count($rows); $i++) {
+				$fila = $rows[$i];
+
+				$fecha = $this->detectarFormatoFecha($fila[0]);
+
+				$amount = $this->parseEuropeanNumber($fila[4]);
+
+				// Determinar el monto correcto
+				if ($fila[3] == 'D') {
+					$monto = '-'.$amount;
+				} else {
+					$monto = $amount;
+				}
+
+				// Ajusta los índices [0], [1], [2] según el orden de tus columnas
+				$movimientos_transformados[] = [
+					'fecha'      => $fecha,  // Ej: "2024-01-01"
+					'referencia' => $fila[1],  // Ej: "123456"
 					'monto'      => $monto,  // Ej: "100.00"
 				];
 				
