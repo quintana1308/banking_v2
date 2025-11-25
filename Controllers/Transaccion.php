@@ -1967,11 +1967,12 @@ class Transaccion extends Controllers{
 			// Asume que la primera fila son los encabezados
 			for ($i = 1; $i < count($rows); $i++) {
 				$fila = $rows[$i];
-				
+
 				if($fila[0] == 'Fecha'){
 					continue;
 				}else{
-					$fecha = $this->detectarFormatoFecha($fila[0]);
+					$fecha = DateTime::createFromFormat('m/d/Y', $fila[0])->format('Y-m-d');
+					//$fecha = $this->detectarFormatoFecha($fila[0]);
 				}
 
 				$amount = $this->parseEuropeanNumber($fila[3]);
