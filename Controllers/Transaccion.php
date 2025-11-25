@@ -2483,11 +2483,12 @@ class Transaccion extends Controllers{
 			$sheet = $spreadsheet->getActiveSheet();
 			$rows = $sheet->toArray();
 
+			
 			foreach ($rows as $fila) {
 				if (count($fila) == 7) {
 					$result = $this->procesarExcelProvincial2($filePath);
 					return $result;
-				}else {
+				}else if (count($fila) == 5){
 					$result = $this->procesarExcelProvincial1($filePath);
 					return $result;
 				}
@@ -2497,7 +2498,7 @@ class Transaccion extends Controllers{
 			if (file_exists($filePath)) unlink($filePath);
 			echo json_encode([
 				'success' => false,
-				'msg' => 'Archivo Excel esta dañado y/o absoleto.'
+				'msg' => 'Archivo Excel esta dañado y/o formato no permitido.'
 			]);
 			die();
 		}
