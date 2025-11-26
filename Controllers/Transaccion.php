@@ -2024,9 +2024,6 @@ class Transaccion extends Controllers{
 				
 				$totalMovimientos++;
 			}
-			
-			dep($movimientos_transformados);
-			exit;
 
 			return [
 				'total' => $totalMovimientos,
