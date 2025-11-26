@@ -1989,7 +1989,7 @@ class Transaccion extends Controllers{
 			$spreadsheet = IOFactory::load($filePath);
 			$sheet = $spreadsheet->getActiveSheet();
 			$rows = $sheet->toArray();
-
+			
 			$movimientos_transformados = [];
 			$totalMovimientos = 0;
 			
@@ -2000,7 +2000,8 @@ class Transaccion extends Controllers{
 					break; // Termina el ciclo si la fecha está vacía
 				}
 
-				$fecha = $this->detectarFormatoFecha($fila[1]);
+				$fecha = DateTime::createFromFormat('m/d/Y', $fila[1])->format('Y-m-d');
+				//$fecha = $this->detectarFormatoFecha($fila[1]);
 
 				$debit = $this->parseEuropeanNumber($fila[4]);
 				$credit = $this->parseEuropeanNumber($fila[5]);
@@ -2023,6 +2024,9 @@ class Transaccion extends Controllers{
 				
 				$totalMovimientos++;
 			}
+			
+			dep($movimientos_transformados);
+			exit;
 
 			return [
 				'total' => $totalMovimientos,
