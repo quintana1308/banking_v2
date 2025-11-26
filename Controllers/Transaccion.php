@@ -1053,6 +1053,44 @@ class Transaccion extends Controllers{
 	}
 
 	/**
+	 * Procesa la referencia bancaria según el formato específico
+	 * @param string $descripcion Descripción del movimiento (ej: TRAV0014228714000020968)
+	 * @param string $columnaAlternativa Columna alternativa (ej: 0000139740)
+	 * @param string $fecha Fecha del movimiento
+	 * @return string Referencia procesada
+	 */
+	private function procesarReferenciaBancaria($descripcion, $columnaAlternativa, $fecha)
+	{
+		// Limpiar la descripción
+		$descripcion = trim($descripcion);
+		
+		// Si inicia con TRA, procesar formato especial
+		if (strpos($descripcion, 'TRA') === 0) {
+			// Estructura: TRA + [V/J] + [00/000] + cedula + referencia
+			// Ejemplos: 
+			// - TRAV0030019249000017555 (TRA + V00 + 30019249 + 000017555)
+			// - TRAJ00014228714000020968 (TRA + J000 + 14228714 + 000020968)
+			
+			$patron = '/^TRA([VJ])0*(\d+)(\d{9})$/';
+			if (preg_match($patron, $descripcion, $matches)) {
+				$tipoPersona = $matches[1]; // V o J
+				$cedula = $matches[2];      // cedula (ej: 30019249)
+				$referencia = $matches[3];  // referencia (ej: 000017555)
+				
+				// Formato: dmYFVCedula
+				$fechaFormateada = date('dmY', strtotime($fecha));
+				return $fechaFormateada . 'F' . $tipoPersona . $cedula;
+			}
+		}
+		
+		// Si no inicia con TRA, usar columna alternativa
+		// Limpiar comilla inicial y remover ceros a la izquierda: '0000139740 -> 139740
+		$columnaLimpia = ltrim($columnaAlternativa, "'"); // Remover comilla inicial
+		$referencia = ltrim($columnaLimpia, '0'); // Remover ceros a la izquierda
+		return $referencia ?: '0'; // Si queda vacío, usar '0'
+	}
+
+	/**
 	 * Obtiene la API Key de PDF.co desde Config/Config.php (constante PDFCO_API_KEY).
 	 * - Mantiene compatibilidad sin cambiar rutas ni lógica de negocio.
 	 * - Si no está definida, retorna cadena vacía para manejo controlado.
@@ -2112,7 +2150,7 @@ class Transaccion extends Controllers{
 			$spreadsheet = IOFactory::load($filePath);
 			$sheet = $spreadsheet->getActiveSheet();
 			$rows = $sheet->toArray();
-			
+
 			$movimientos_transformados = [];
 			$totalMovimientos = 0;
 			
@@ -2125,7 +2163,10 @@ class Transaccion extends Controllers{
 				if ($fila[2] == 'Saldo Inicial') {
 					continue; 
 				}
-				$fecha = $this->detectarFormatoFecha($fila[0]);
+
+
+				$fecha = DateTime::createFromFormat('m/d/Y', $fila[0])->format('Y-m-d');
+				//$fecha = $this->detectarFormatoFecha($fila[0]);
 				
 				$debit = $this->parseEuropeanNumber($fila[3]);
 				$credit = $this->parseEuropeanNumber($fila[4]);
@@ -2483,7 +2524,6 @@ class Transaccion extends Controllers{
 			$sheet = $spreadsheet->getActiveSheet();
 			$rows = $sheet->toArray();
 
-			
 			foreach ($rows as $fila) {
 				if (count($fila) == 7) {
 					$result = $this->procesarExcelProvincial2($filePath);
@@ -2522,7 +2562,8 @@ class Transaccion extends Controllers{
 					continue;
 				}
 
-				$fecha = $this->detectarFormatoFecha($fila[0]);
+				$fecha = DateTime::createFromFormat('m/d/Y', $fila[0])->format('Y-m-d');
+				//$fecha = $this->detectarFormatoFecha($fila[0]);
 
 				$amount = $this->parseEuropeanNumber($fila[3]);
 
@@ -2553,44 +2594,6 @@ class Transaccion extends Controllers{
 		}
 	}
 
-	/**
-	 * Procesa la referencia bancaria según el formato específico
-	 * @param string $descripcion Descripción del movimiento (ej: TRAV0014228714000020968)
-	 * @param string $columnaAlternativa Columna alternativa (ej: 0000139740)
-	 * @param string $fecha Fecha del movimiento
-	 * @return string Referencia procesada
-	 */
-	private function procesarReferenciaBancaria($descripcion, $columnaAlternativa, $fecha)
-	{
-		// Limpiar la descripción
-		$descripcion = trim($descripcion);
-		
-		// Si inicia con TRA, procesar formato especial
-		if (strpos($descripcion, 'TRA') === 0) {
-			// Estructura: TRA + [V/J] + [00/000] + cedula + referencia
-			// Ejemplos: 
-			// - TRAV0030019249000017555 (TRA + V00 + 30019249 + 000017555)
-			// - TRAJ00014228714000020968 (TRA + J000 + 14228714 + 000020968)
-			
-			$patron = '/^TRA([VJ])0*(\d+)(\d{9})$/';
-			if (preg_match($patron, $descripcion, $matches)) {
-				$tipoPersona = $matches[1]; // V o J
-				$cedula = $matches[2];      // cedula (ej: 30019249)
-				$referencia = $matches[3];  // referencia (ej: 000017555)
-				
-				// Formato: dmYFVCedula
-				$fechaFormateada = date('dmY', strtotime($fecha));
-				return $fechaFormateada . 'F' . $tipoPersona . $cedula;
-			}
-		}
-		
-		// Si no inicia con TRA, usar columna alternativa
-		// Limpiar comilla inicial y remover ceros a la izquierda: '0000139740 -> 139740
-		$columnaLimpia = ltrim($columnaAlternativa, "'"); // Remover comilla inicial
-		$referencia = ltrim($columnaLimpia, '0'); // Remover ceros a la izquierda
-		return $referencia ?: '0'; // Si queda vacío, usar '0'
-	}
-
 	//PROCESO DE BANCO PROVINCIAL (EXCEL - PAGO MOVIL)
 	private function procesarExcelProvincial2($filePath)
 	{	
@@ -2610,7 +2613,9 @@ class Transaccion extends Controllers{
 				if($fila[0] == ''){
 					continue;
 				}
-				$fecha = $this->detectarFormatoFecha($fila[0]);
+
+				//$fecha = $this->detectarFormatoFecha($fila[0]);
+				$fecha = DateTime::createFromFormat('m/d/Y', $fila[0])->format('Y-m-d');
 
 				$amount = $this->parseEuropeanNumber($fila[5]);
 
@@ -2640,7 +2645,6 @@ class Transaccion extends Controllers{
 			die();
 		}
 	}
-
 
 	//------ PROCESO ARCHIVOS EN CSV -------//
 
@@ -3438,111 +3442,6 @@ class Transaccion extends Controllers{
 			], JSON_UNESCAPED_UNICODE);
 			exit();
 		}
-	}
-
-	/**
-	 * Método de prueba básico para Excel - sin usar modelo
-	 */
-	public function testBasicExcel()
-	{
-		// Terminar y limpiar TODOS los buffers de salida
-		while (ob_get_level()) {
-			ob_end_clean();
-		}
-		
-		try {
-			// Crear spreadsheet con datos hardcodeados
-			$spreadsheet = new Spreadsheet();
-			$sheet = $spreadsheet->getActiveSheet();
-
-			// Datos de prueba hardcodeados
-			$headers = ['Banco', 'Cuenta', 'Referencia', 'Fecha', 'Monto'];
-			$sheet->fromArray($headers, null, 'A1');
-
-			// Datos de ejemplo
-			$testData = [
-				['Banco Ejemplo', '12345678', 'REF001', '2023-11-25', '1000.00'],
-				['Banco Test', '87654321', 'REF002', '2023-11-24', '2500.50'],
-				['Banco Demo', '11223344', 'REF003', '2023-11-23', '750.25']
-			];
-
-			$row = 2;
-			foreach ($testData as $rowData) {
-				$sheet->fromArray($rowData, null, 'A' . $row);
-				$row++;
-			}
-
-			// Configurar headers para descarga
-			$filename = "test_basic.xlsx";
-			
-			header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-			header('Content-Disposition: attachment;filename="' . $filename . '"');
-			header('Cache-Control: max-age=0');
-			header('Pragma: public');
-
-			// Crear writer y enviar
-			$writer = new Xlsx($spreadsheet);
-			$writer->save('php://output');
-			
-			exit();
-
-		} catch (Exception $e) {
-			header('Content-Type: text/plain');
-			echo "Error: " . $e->getMessage();
-			exit();
-		}
-	}
-
-	/**
-	 * Método de diagnóstico - solo verifica si PhpSpreadsheet funciona
-	 */
-	public function diagnosticExcel()
-	{
-		// Limpiar TODOS los buffers
-		while (ob_get_level()) {
-			ob_end_clean();
-		}
-		
-		header('Content-Type: text/plain');
-		
-		echo "=== DIAGNÓSTICO PHPSPREADSHEET ===\n\n";
-		
-		// Verificar si la clase existe
-		if (class_exists('PhpOffice\PhpSpreadsheet\Spreadsheet')) {
-			echo "✓ PhpSpreadsheet está disponible\n";
-		} else {
-			echo "✗ PhpSpreadsheet NO está disponible\n";
-			exit();
-		}
-		
-		// Intentar crear un spreadsheet
-		try {
-			$spreadsheet = new Spreadsheet();
-			echo "✓ Spreadsheet creado exitosamente\n";
-			
-			$sheet = $spreadsheet->getActiveSheet();
-			echo "✓ Hoja activa obtenida\n";
-			
-			$sheet->setCellValue('A1', 'Test');
-			echo "✓ Valor establecido en celda\n";
-			
-			$writer = new Xlsx($spreadsheet);
-			echo "✓ Writer Xlsx creado\n";
-			
-			// Intentar guardar en memoria
-			ob_start();
-			$writer->save('php://output');
-			$content = ob_get_contents();
-			ob_end_clean();
-			
-			echo "✓ Archivo generado en memoria (" . strlen($content) . " bytes)\n";
-			echo "\n=== DIAGNÓSTICO COMPLETADO ===\n";
-			
-		} catch (Exception $e) {
-			echo "✗ Error: " . $e->getMessage() . "\n";
-		}
-		
-		exit();
 	}
 }
 ?>
