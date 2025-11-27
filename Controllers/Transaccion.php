@@ -2301,11 +2301,13 @@ class Transaccion extends Controllers{
 			$sheet = $spreadsheet->getActiveSheet();
 			$rows = $sheet->toArray();
 
+			dep($rows);
+			exit;
 			$movimientos_transformados = [];
 			$totalMovimientos = 0;
 
 			// Asume que la primera fila son los encabezados
-			for ($i = 17; $i < count($rows); $i++) {
+			for ($i = 15; $i < count($rows); $i++) {
 				$fila = $rows[$i];
 				if ($fila[13] == 'Saldo') {
 					continue; 
@@ -2316,11 +2318,14 @@ class Transaccion extends Controllers{
 				if ($fila[1] == 'Totales') {
 					continue; 
 				}
+				if ($fila[1] == 'Fecha') {
+					continue; 
+				}
 
 				$fecha = DateTime::createFromFormat('Y/m/d', $fila[1])->format('Y-m-d');
 				//$fecha = $this->detectarFormatoFecha($fila[0]);
 
-				$debit = $this->parseEuropeanNumber($fila[11]);
+				$debit = $this->parseEuropeanNumber($fila[10]);
 				$credit = $this->parseEuropeanNumber($fila[12]);
 
 				if ($credit == 0) {
