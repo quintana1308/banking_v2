@@ -3143,6 +3143,75 @@ class Transaccion extends Controllers{
 	}
 
 	/**
+	 * Actualizar un comentario existente
+	 */
+	public function updateComment()
+	{
+		// Verificar que sea una petición POST
+		if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+			echo json_encode(['status' => false, 'message' => 'Método no permitido'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		// Obtener datos del POST
+		$rawInput = file_get_contents('php://input');
+		$input = json_decode($rawInput, true);
+
+		if (json_last_error() !== JSON_ERROR_NONE) {
+			echo json_encode(['status' => false, 'message' => 'Error en formato JSON'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$commentId = intval($input['comment_id'] ?? 0);
+		$description = trim($input['description'] ?? '');
+		$userId = intval($_SESSION['idUser'] ?? 0);
+
+		// Validaciones básicas
+		if ($commentId <= 0) {
+			echo json_encode(['status' => false, 'message' => 'ID de comentario inválido'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		if (empty($description)) {
+			echo json_encode(['status' => false, 'message' => 'La descripción del comentario es obligatoria'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		if (strlen($description) > 1000) {
+			echo json_encode(['status' => false, 'message' => 'El comentario es demasiado largo (máximo 1000 caracteres)'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		if ($userId <= 0) {
+			echo json_encode(['status' => false, 'message' => 'Usuario no válido'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		// Instanciar modelo de comentarios
+		$commentModel = new CommentModel();
+
+		// Verificar permisos del usuario
+		if (!$commentModel->canUserComment($userId)) {
+			echo json_encode(['status' => false, 'message' => 'No tienes permisos para editar comentarios'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		// Actualizar el comentario (incluye validación de propietario)
+		$updated = $commentModel->updateComment($commentId, $description, $userId);
+		
+		if (!$updated) {
+			echo json_encode(['status' => false, 'message' => 'No se pudo actualizar el comentario. Verifica que seas el propietario.'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		echo json_encode([
+			'status' => true,
+			'message' => 'Comentario actualizado exitosamente'
+		], JSON_UNESCAPED_UNICODE);
+		die();
+	}
+
+	/**
 	 * Exportar transacciones filtradas a Excel
 	 * Exporta exactamente los datos que están visibles en la tabla con filtros aplicados
 	 */

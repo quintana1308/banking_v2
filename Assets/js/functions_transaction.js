@@ -849,6 +849,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Variables globales para el modal de comentarios
     let currentTransactionId = null;
     let currentEmpresaId = null;
+    let currentCommentId = null;
 
     // Event listener para el botón de comentarios
     $('#transaction-list-table tbody').on('click', '.btn-comment', function () {
@@ -873,6 +874,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Limpiar secciones del modal
         $('#createCommentSection').addClass('d-none');
         $('#viewCommentSection').addClass('d-none');
+        $('#editCommentSection').addClass('d-none');
         $('#noPermissionSection').addClass('d-none');
         $('#saveCommentBtn').addClass('d-none');
 
@@ -950,10 +952,31 @@ document.addEventListener('DOMContentLoaded', function () {
         $('#commentUser').text(comment.user_name);
         $('#commentText').text(comment.description);
         
+        // Guardar ID del comentario para edición
+        currentCommentId = comment.comment_id;
+        
         // Formatear fecha
         const date = new Date(comment.created_at);
         const formattedDate = date.toLocaleDateString('es-VE') + ' ' + date.toLocaleTimeString('es-VE');
         $('#commentDate').text(formattedDate);
+        
+        // Mostrar indicador de editado si aplica
+        if (comment.updated_at && comment.updated_at !== comment.created_at) {
+            // Formatear fecha de edición
+            const editDate = new Date(comment.updated_at);
+            const formattedEditDate = editDate.toLocaleDateString('es-VE') + ' ' + editDate.toLocaleTimeString('es-VE');
+            $('#editedDate').text(formattedEditDate);
+            $('#editedIndicator').removeClass('d-none');
+        } else {
+            $('#editedIndicator').addClass('d-none');
+        }
+        
+        // Mostrar botón de editar solo si el usuario es el propietario
+        if (parseInt(comment.user_id) === parseInt(currentUserId)) {
+            $('#editCommentBtn').removeClass('d-none');
+        } else {
+            $('#editCommentBtn').addClass('d-none');
+        }
         
         $('#viewCommentSection').removeClass('d-none');
     }
@@ -1097,6 +1120,161 @@ document.addEventListener('DOMContentLoaded', function () {
         .finally(() => {
             // Restaurar botón
             btnSave.html(originalHTML).prop('disabled', false);
+        });
+    });
+
+    // ============================================
+    // EVENT LISTENERS PARA EDICIÓN DE COMENTARIOS
+    // ============================================
+
+    // Event listener para el botón de editar comentario
+    $(document).on('click', '#editCommentBtn', function() {
+        // Cambiar a modo edición
+        $('#viewCommentSection').addClass('d-none');
+        $('#editCommentSection').removeClass('d-none');
+        
+        // Llenar el textarea con el contenido actual
+        const currentText = $('#commentText').text();
+        $('#editCommentDescription').val(currentText);
+        $('#editCharCount').text(currentText.length);
+        
+        // Cambiar título del modal
+        $('#modalTitle').text('Editar Comentario');
+    });
+
+    // Event listener para cancelar edición
+    $(document).on('click', '#cancelEditBtn', function() {
+        // Volver a modo vista
+        $('#editCommentSection').addClass('d-none');
+        $('#viewCommentSection').removeClass('d-none');
+        
+        // Restaurar título del modal
+        $('#modalTitle').text('Ver Comentario');
+    });
+
+    // Contador de caracteres para el textarea de edición
+    $(document).on('input', '#editCommentDescription', function() {
+        const length = $(this).val().length;
+        $('#editCharCount').text(length);
+        
+        // Cambiar color si se acerca al límite
+        if (length > 900) {
+            $('#editCharCount').addClass('text-warning');
+        } else {
+            $('#editCharCount').removeClass('text-warning');
+        }
+    });
+
+    // Event listener para actualizar comentario
+    $(document).on('click', '#updateCommentBtn', function() {
+        const description = $('#editCommentDescription').val().trim();
+        
+        if (!description) {
+            Swal.fire({
+                title: 'Atención',
+                text: 'Por favor ingresa un comentario',
+                icon: 'warning',
+                background: 'rgba(13, 17, 23, 0.95)',
+                color: '#f0f6fc',
+                iconColor: '#ffc107',
+                confirmButtonColor: '#667eea',
+                confirmButtonText: 'Entendido'
+            });
+            return;
+        }
+
+        if (description.length > 1000) {
+            Swal.fire({
+                title: 'Atención',
+                text: 'El comentario es demasiado largo (máx 1000 caracteres)',
+                icon: 'warning',
+                background: 'rgba(13, 17, 23, 0.95)',
+                color: '#f0f6fc',
+                iconColor: '#ffc107',
+                confirmButtonColor: '#667eea',
+                confirmButtonText: 'Entendido'
+            });
+            return;
+        }
+
+        // Deshabilitar botón mientras se actualiza
+        const btnUpdate = $(this);
+        const originalHTML = btnUpdate.html();
+        btnUpdate.html('<span class="btn-glow"></span><i class="fas fa-spinner fa-spin me-2"></i>Actualizando...').prop('disabled', true);
+
+        // Enviar actualización
+        fetch(`${base_url}/transaccion/updateComment`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                comment_id: currentCommentId,
+                description: description
+            })
+        })
+        .then(response => {
+            if (!response.ok) throw new Error("Error HTTP: " + response.status);
+            return response.json();
+        })
+        .then(data => {
+            if (data.status) {
+                Swal.fire({
+                    title: '¡Éxito!',
+                    text: data.message,
+                    icon: 'success',
+                    timer: 2000,
+                    timerProgressBar: true,
+                    showConfirmButton: false,
+                    background: 'rgba(13, 17, 23, 0.95)',
+                    color: '#f0f6fc',
+                    iconColor: '#28a745'
+                });
+
+                // Actualizar el texto del comentario en la vista
+                $('#commentText').text(description);
+                
+                // Mostrar indicador de editado con fecha actual
+                const now = new Date();
+                const formattedNow = now.toLocaleDateString('es-VE') + ' ' + now.toLocaleTimeString('es-VE');
+                $('#editedDate').text(formattedNow);
+                $('#editedIndicator').removeClass('d-none');
+                
+                // Volver a modo vista
+                $('#editCommentSection').addClass('d-none');
+                $('#viewCommentSection').removeClass('d-none');
+                $('#modalTitle').text('Ver Comentario');
+                
+            } else {
+                Swal.fire({
+                    title: 'Error',
+                    text: data.message,
+                    icon: 'error',
+                    background: 'rgba(13, 17, 23, 0.95)',
+                    color: '#f0f6fc',
+                    iconColor: '#dc3545',
+                    confirmButtonColor: '#dc3545',
+                    confirmButtonText: 'Entendido'
+                });
+            }
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            Swal.fire({
+                title: 'Error',
+                text: 'Error al actualizar comentario: ' + error.message,
+                icon: 'error',
+                background: 'rgba(13, 17, 23, 0.95)',
+                color: '#f0f6fc',
+                iconColor: '#dc3545',
+                confirmButtonColor: '#dc3545',
+                confirmButtonText: 'Entendido'
+            });
+        })
+        .finally(() => {
+            // Restaurar botón
+            btnUpdate.html(originalHTML).prop('disabled', false);
         });
     });
 

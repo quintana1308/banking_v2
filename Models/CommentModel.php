@@ -28,7 +28,7 @@ class CommentModel extends Mysql
     public function getTransactionComment($conciliationId, $empresaId)
     {
         $sql = "SELECT cc.id, cc.conciliation_id, cc.empresa_id, cc.comment_id, cc.user_id, cc.created_at,
-                       c.description, u.name as user_name
+                       c.description, c.updated_at, u.name as user_name
                 FROM conciliation_comment cc
                 INNER JOIN comment c ON cc.comment_id = c.id
                 INNER JOIN usuario u ON cc.user_id = u.id
@@ -147,6 +147,36 @@ class CommentModel extends Mysql
         $access = $this->select($sql);
         
         return $access !== false;
+    }
+
+    /**
+     * Actualizar un comentario existente
+     * @param int $commentId ID del comentario
+     * @param string $description Nueva descripción
+     * @param int $userId ID del usuario que intenta editar
+     * @return bool
+     */
+    public function updateComment($commentId, $description, $userId)
+    {
+        // Verificar que el usuario es el propietario del comentario
+        $sql = "SELECT cc.user_id, cc.conciliation_id, cc.empresa_id 
+                FROM conciliation_comment cc 
+                WHERE cc.comment_id = $commentId";
+        
+        $commentInfo = $this->select($sql);
+        
+        if (!$commentInfo) {
+            return false; // Comentario no encontrado
+        }
+        
+        // Verificar que el usuario actual es el propietario
+        if (intval($commentInfo['user_id']) !== intval($userId)) {
+            return false; // No es el propietario
+        }
+        
+        // Actualizar el comentario
+        $sql = "UPDATE comment SET description = ?, updated_at = NOW() WHERE id = ?";
+        return $this->update($sql, [$description, $commentId]);
     }
 
     /**

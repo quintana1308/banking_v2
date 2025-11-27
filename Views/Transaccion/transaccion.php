@@ -362,10 +362,61 @@ ob_start();
                             </div>
                             <div class="comment-content p-3" style="background: rgba(13, 17, 23, 0.6); border-radius: 8px; border-left: 4px solid #667eea;">
                                 <p id="commentText" class="mb-2" style="color: #f0f6fc; line-height: 1.5;">-</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small style="color: #8b949e;">
+                                        <i class="fas fa-clock me-1"></i>
+                                        <span id="commentDate">-</span>
+                                        <span id="editedIndicator" class="d-none ms-2" style="color: #ffc107;">
+                                            <i class="fas fa-edit me-1"></i>
+                                            (Editado <span id="editedDate"></span>)
+                                        </span>
+                                    </small>
+                                    <button type="button" id="editCommentBtn" class="btn btn-sm d-none" 
+                                            style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; color: #fff; font-weight: 500; padding: 0.25rem 0.75rem;">
+                                        <i class="fas fa-edit me-1"></i>
+                                        Editar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección para editar comentario -->
+                <div id="editCommentSection" class="d-none">
+                    <div class="futuristic-card-compact" style="background: rgba(21, 32, 43, 0.8); border: 1px solid rgba(48, 54, 61, 0.6); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);">
+                        <div class="card-body p-3">
+                            <h6 class="mb-3" style="color: #fff; font-weight: 500;">
+                                <i class="fas fa-edit me-2" style="color: #667eea;"></i>
+                                Editar Comentario
+                            </h6>
+                            <div class="form-group-futuristic mb-3">
+                                <label class="form-label-futuristic" style="color: #f0f6fc; font-weight: 500;">
+                                    <i class="fas fa-edit me-2" style="color: #667eea;"></i>
+                                    Comentario
+                                </label>
+                                <div class="input-container">
+                                    <textarea id="editCommentDescription" class="form-control-futuristic" rows="4" 
+                                             placeholder="Edita tu comentario aquí..." maxlength="1000" required
+                                             style="background: rgba(21, 32, 43, 0.8); border: 1px solid rgba(48, 54, 61, 0.6); color: #f0f6fc; resize: vertical;"></textarea>
+                                    <div class="input-border"></div>
+                                </div>
                                 <small style="color: #8b949e;">
-                                    <i class="fas fa-clock me-1"></i>
-                                    <span id="commentDate">-</span>
+                                    <span id="editCharCount">0</span>/1000 caracteres
                                 </small>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button type="button" id="cancelEditBtn" class="btn btn-secondary" 
+                                        style="background: rgba(108, 117, 125, 0.8); border: 1px solid rgba(108, 117, 125, 0.6); color: #f0f6fc;">
+                                    <i class="fas fa-times me-2"></i>
+                                    Cancelar
+                                </button>
+                                <button type="button" id="updateCommentBtn" class="btn-primary-futuristic" 
+                                        style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; color: #fff; font-weight: 500;">
+                                    <span class="btn-glow"></span>
+                                    <i class="fas fa-save me-2"></i>
+                                    Actualizar Comentario
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -398,6 +449,7 @@ ob_start();
 // Variables globales para permisos
 const canDeleteTransactions = <?= $data['can_delete_transactions'] ? 'true' : 'false' ?>;
 const canComment = <?= $data['can_comment'] ? 'true' : 'false' ?>;
+const currentUserId = <?= $_SESSION['idUser'] ?? 0 ?>;
 
 document.addEventListener('DOMContentLoaded', function() {
     // Focus effects for form controls
