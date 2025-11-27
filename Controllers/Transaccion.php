@@ -2258,9 +2258,17 @@ class Transaccion extends Controllers{
 
 				//$fecha = DateTime::createFromFormat('d/m/Y', $fila[1])->format('Y-m-d');
 				$fecha = $this->detectarFormatoFecha($fila[1]);
-		
-				$debit = $this->parseEuropeanNumber($fila[13]);
-				$credit = $this->parseEuropeanNumber($fila[15]);
+				if($fila[2] != ''){
+					$debit = $this->parseEuropeanNumber($fila[13]);
+					$credit = $this->parseEuropeanNumber($fila[15]);
+
+					$referencia = $fila[12];
+				}else{
+					$debit = $this->parseEuropeanNumber($fila[11]);
+					$credit = $this->parseEuropeanNumber($fila[13]);
+
+					$referencia = $fila[10];
+				}
 
 				if ($credit == 0) {
 					$monto = $debit;
@@ -2271,7 +2279,7 @@ class Transaccion extends Controllers{
 				// Ajusta los índices [0], [1], [2] según el orden de tus columnas
 				$movimientos_transformados[] = [
 					'fecha'      => $fecha,  // Ej: "2024-01-01"
-					'referencia' => $fila[12],  // Ej: "123456"
+					'referencia' => $referencia,  // Ej: "123456"
 					'monto'      => $monto,  // Ej: "100.00"
 				];
 				
