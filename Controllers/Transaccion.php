@@ -2243,6 +2243,7 @@ class Transaccion extends Controllers{
 			$sheet = $spreadsheet->getActiveSheet();
 			$rows = $sheet->toArray();
 			
+
 			$movimientos_transformados = [];
 			$totalMovimientos = 0;
 			
@@ -2259,11 +2260,16 @@ class Transaccion extends Controllers{
 				//$fecha = DateTime::createFromFormat('d/m/Y', $fila[1])->format('Y-m-d');
 				$fecha = $this->detectarFormatoFecha($fila[1]);
 				if($fila[2] != ''){
+
+					
 					$debit = $this->parseEuropeanNumber($fila[13]);
 					$credit = $this->parseEuropeanNumber($fila[15]);
 
 					$referencia = $fila[12];
 				}else{
+
+				
+
 					$debit = $this->parseEuropeanNumber($fila[11]);
 					$credit = $this->parseEuropeanNumber($fila[13]);
 
@@ -2285,6 +2291,9 @@ class Transaccion extends Controllers{
 				
 				$totalMovimientos++;
 			}
+
+			dep($movimientos_transformados);
+			exit;
 
 			return [
 				'total' => $totalMovimientos,
