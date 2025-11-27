@@ -2520,6 +2520,7 @@ class Transaccion extends Controllers{
 			$rows = $sheet->toArray();
 
 			foreach ($rows as $fila) {
+
 				if (count($fila) == 7) {
 					$result = $this->procesarExcelProvincial2($filePath);
 					return $result;
@@ -2548,6 +2549,40 @@ class Transaccion extends Controllers{
 
 			$movimientos_transformados = [];
 			$totalMovimientos = 0;
+			
+			for ($i = 1; $i < 2; $i++) {
+				
+				$fila = $rows[$i];
+				if($fila[1] != ''){
+					$result = $this->procesarExcelProvincialSub1($filePath);
+					return $result;
+					break;
+				}else{
+					$result = $this->procesarExcelProvincialSub2($filePath);
+					return $result;
+					break;
+				}
+			}
+
+		} catch (Exception $e) {
+			if (file_exists($filePath)) unlink($filePath);
+			echo json_encode([
+				'success' => false,
+				'msg' => 'Archivo Excel esta dañado y/o absoleto.'
+			]);
+			die();
+		}
+	}
+
+	private function procesarExcelProvincialSub1($filePath)
+	{	
+		try {
+			$spreadsheet = IOFactory::load($filePath);
+			$sheet = $spreadsheet->getActiveSheet();
+			$rows = $sheet->toArray();
+
+			$movimientos_transformados = [];
+			$totalMovimientos = 0;
 
 			// Asume que la primera fila son los encabezados
 			for ($i = 1; $i < count($rows); $i++) {
@@ -2557,21 +2592,22 @@ class Transaccion extends Controllers{
 					continue;
 				}
 
-				$fecha = DateTime::createFromFormat('m/d/Y', $fila[0])->format('Y-m-d');
-				//$fecha = $this->detectarFormatoFecha($fila[0]);
+					$fecha = DateTime::createFromFormat('m/d/Y', $fila[0])->format('Y-m-d');
+					//$fecha = $this->detectarFormatoFecha($fila[0]);
 
-				$amount = $this->parseEuropeanNumber($fila[3]);
+					$amount = $this->parseEuropeanNumber($fila[3]);
 
-				//$reference = str_replace(["'", '"'], '', preg_replace('/^.?([VJE])0(\d+).*$/', '\1\2', $fila[1]));
-				$reference = $this->procesarReferenciaBancaria($fila[2], $fila[1], $fecha);
-				// Ajusta los índices [0], [1], [2] según el orden de tus columnas
-				$movimientos_transformados[] = [
-					'fecha'      => $fecha,  // Ej: "2024-01-01"
-					'referencia' => $reference,  // Ej: "123456"
-					'monto'      => $amount,  // Ej: "100.00"
-				];
+					//$reference = str_replace(["'", '"'], '', preg_replace('/^.?([VJE])0(\d+).*$/', '\1\2', $fila[1]));
+					$reference = $this->procesarReferenciaBancaria($fila[2], $fila[1], $fecha);
+					// Ajusta los índices [0], [1], [2] según el orden de tus columnas
+					$movimientos_transformados[] = [
+						'fecha'      => $fecha,  // Ej: "2024-01-01"
+						'referencia' => $reference,  // Ej: "123456"
+						'monto'      => $amount,  // Ej: "100.00"
+					];
+					
+					$totalMovimientos++;
 				
-				$totalMovimientos++;
 			}
 			
 			return [
@@ -2588,6 +2624,64 @@ class Transaccion extends Controllers{
 			die();
 		}
 	}
+
+	private function procesarExcelProvincialSub2($filePath)
+	{	
+		try {
+			$spreadsheet = IOFactory::load($filePath);
+			$sheet = $spreadsheet->getActiveSheet();
+			$rows = $sheet->toArray();
+
+			$movimientos_transformados = [];
+			$totalMovimientos = 0;
+			// Asume que la primera fila son los encabezados
+			for ($i = 10; $i < count($rows); $i++) {
+				$fila = $rows[$i];
+
+				if($fila[0] == ''){
+					continue;
+				}
+				if($fila[0] == 'Saldo Inicial '){
+					break;
+				}
+
+					$fnew = ltrim($fila[0]);
+					$fecha = DateTime::createFromFormat('d-m-Y', $fnew)->format('Y-m-d');
+					//$fecha = DateTime::createFromFormat('d-m-Y', trim($fila[0]))->format('Y-m-d');
+					//$fecha = $this->detectarFormatoFecha($fila[0]);
+
+					$amount = $this->parseEuropeanNumber($fila[4]);
+
+					$fileFormat = ltrim($fila[2], "'");
+					//$reference = str_replace(["'", '"'], '', preg_replace('/^.?([VJE])0(\d+).*$/', '\1\2', $fila[1]));
+					$reference = $this->procesarReferenciaBancaria($fileFormat, $fila[3], $fecha);
+					// Ajusta los índices [0], [1], [2] según el orden de tus columnas
+					$movimientos_transformados[] = [
+						'fecha'      => $fecha,  // Ej: "2024-01-01"
+						'referencia' => $reference,  // Ej: "123456"
+						'monto'      => $amount,  // Ej: "100.00"
+					];
+					
+					$totalMovimientos++;
+				
+			}
+			
+			return [
+				'total' => $totalMovimientos,
+				'mov' => $movimientos_transformados
+				];
+
+		} catch (Exception $e) {
+			if (file_exists($filePath)) unlink($filePath);
+			echo json_encode([
+				'success' => false,
+				'msg' => 'Archivo Excel esta dañado y/o absoleto.'
+			]);
+			die();
+		}
+	}
+
+	
 
 	//PROCESO DE BANCO PROVINCIAL (EXCEL - PAGO MOVIL)
 	private function procesarExcelProvincial2($filePath)
