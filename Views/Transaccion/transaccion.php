@@ -121,7 +121,7 @@ ob_start();
                                     Fecha
                                 </label>
                                 <div class="input-container">
-                                    <input type="month" id="filtroDate" class="form-control-futuristic">
+                                    <input type="date" id="filtroDate" class="form-control-futuristic">
                                     <div class="input-border"></div>
                                 </div>
                             </div>

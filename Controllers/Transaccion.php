@@ -2296,12 +2296,6 @@ class Transaccion extends Controllers{
 	//PROCESO DE BANCO BNC - FORMATO 2(EXCEL)
 	private function procesarExcelBnc2($filePath)
 	{	
-		echo json_encode([
-			'success' => false,
-			'msg' => 'Formato en Manteniemiento'
-		]);
-		die();
-
 		try {
 			$spreadsheet = IOFactory::load($filePath);
 			$sheet = $spreadsheet->getActiveSheet();
@@ -2323,8 +2317,8 @@ class Transaccion extends Controllers{
 					continue; 
 				}
 
-				//$fecha = DateTime::createFromFormat('Y/m/d', $fila[1])->format('Y-m-d');
-				$fecha = $this->detectarFormatoFecha($fila[0]);
+				$fecha = DateTime::createFromFormat('Y/m/d', $fila[1])->format('Y-m-d');
+				//$fecha = $this->detectarFormatoFecha($fila[0]);
 
 				$debit = $this->parseEuropeanNumber($fila[11]);
 				$credit = $this->parseEuropeanNumber($fila[12]);
