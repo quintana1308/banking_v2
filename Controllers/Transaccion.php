@@ -2301,8 +2301,6 @@ class Transaccion extends Controllers{
 			$sheet = $spreadsheet->getActiveSheet();
 			$rows = $sheet->toArray();
 
-			dep($rows);
-			exit;
 			$movimientos_transformados = [];
 			$totalMovimientos = 0;
 
