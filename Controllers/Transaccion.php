@@ -2242,7 +2242,6 @@ class Transaccion extends Controllers{
 			$spreadsheet = IOFactory::load($filePath);
 			$sheet = $spreadsheet->getActiveSheet();
 			$rows = $sheet->toArray();
-			
 
 			$movimientos_transformados = [];
 			$totalMovimientos = 0;
@@ -2292,9 +2291,6 @@ class Transaccion extends Controllers{
 				$totalMovimientos++;
 			}
 
-			dep($movimientos_transformados);
-			exit;
-
 			return [
 				'total' => $totalMovimientos,
 				'mov' => $movimientos_transformados
@@ -2321,27 +2317,48 @@ class Transaccion extends Controllers{
 			$movimientos_transformados = [];
 			$totalMovimientos = 0;
 
-			// Asume que la primera fila son los encabezados
 			for ($i = 15; $i < count($rows); $i++) {
 				$fila = $rows[$i];
-				if ($fila[13] == 'Saldo') {
-					continue; 
+				if($i == 15){
+					if($fila[1] == 'Fecha'){
+						$positionRef = 10;
+						$positiondebit = 11;
+						$positioncredit = 13;
+					}else{
+						$positionRef = 9;
+						$positiondebit = 10;
+						$positioncredit = 12;
+					}
+					break;
 				}
-				if ($fila[13] == '') {
-					continue; 
-				}
+				
+			}
+			
+			// Asume que la primera fila son los encabezados
+			for ($i = 15; $i < count($rows); $i++) {
+				
+				$fila = $rows[$i];
 				if ($fila[1] == 'Totales') {
 					continue; 
 				}
 				if ($fila[1] == 'Fecha') {
 					continue; 
 				}
+				if ($fila[1] == '') {
+					continue; 
+				}
+				if ($fila[13] == 'Saldo') {
+					continue; 
+				}
+				if ($fila[13] == '') {
+					continue; 
+				}
 
 				$fecha = DateTime::createFromFormat('Y/m/d', $fila[1])->format('Y-m-d');
 				//$fecha = $this->detectarFormatoFecha($fila[0]);
 
-				$debit = $this->parseEuropeanNumber($fila[10]);
-				$credit = $this->parseEuropeanNumber($fila[12]);
+				$debit = $this->parseEuropeanNumber($fila[$positiondebit]);
+				$credit = $this->parseEuropeanNumber($fila[$positioncredit]);
 
 				if ($credit == 0) {
 					$monto = $debit;
@@ -2352,7 +2369,7 @@ class Transaccion extends Controllers{
 				// Ajusta los índices [0], [1], [2] según el orden de tus columnas
 				$movimientos_transformados[] = [
 					'fecha'      => $fecha,  // Ej: "2024-01-01"
-					'referencia' => $fila[9],  // Ej: "123456"
+					'referencia' => $fila[$positionRef],  // Ej: "123456"
 					'monto'      => $monto,  // Ej: "100.00"
 				];
 				
