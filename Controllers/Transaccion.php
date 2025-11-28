@@ -1066,14 +1066,15 @@ class Transaccion extends Controllers{
 		
 		// Si inicia con TRA, procesar formato especial
 		if (strpos($descripcion, 'TRA') === 0) {
-			// Estructura: TRA + [V/J] + [00/000] + cedula + referencia
+			// Estructura: TRA + [V/J/E] + [00/000] + cedula + referencia
 			// Ejemplos: 
 			// - TRAV0030019249000017555 (TRA + V00 + 30019249 + 000017555)
 			// - TRAJ00014228714000020968 (TRA + J000 + 14228714 + 000020968)
+			// - TRAE0012345678000098765 (TRA + E00 + 12345678 + 000098765)
 			
-			$patron = '/^TRA([VJ])0*(\d+)(\d{9})$/';
+			$patron = '/^TRA([VJE])0*(\d+)(\d{9})$/';
 			if (preg_match($patron, $descripcion, $matches)) {
-				$tipoPersona = $matches[1]; // V o J
+				$tipoPersona = $matches[1]; // V, J o E
 				$cedula = $matches[2];      // cedula (ej: 30019249)
 				$referencia = $matches[3];  // referencia (ej: 000017555)
 				
