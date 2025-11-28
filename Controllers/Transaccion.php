@@ -1064,27 +1064,61 @@ class Transaccion extends Controllers{
 		// Limpiar la descripción
 		$descripcion = trim($descripcion);
 		
-		// Si inicia con TRA, procesar formato especial
-		if (strpos($descripcion, 'TRA') === 0) {
-			// Estructura: TRA + [V/J/E] + [00/000] + cedula + referencia
-			// Ejemplos: 
-			// - TRAV0030019249000017555 (TRA + V00 + 30019249 + 000017555)
-			// - TRAJ00014228714000020968 (TRA + J000 + 14228714 + 000020968)
-			// - TRAE0012345678000098765 (TRA + E00 + 12345678 + 000098765)
-			
-			$patron = '/^TRA([VJE])0*(\d+)(\d{9})$/';
-			if (preg_match($patron, $descripcion, $matches)) {
-				$tipoPersona = $matches[1]; // V, J o E
-				$cedula = $matches[2];      // cedula (ej: 30019249)
-				$referencia = $matches[3];  // referencia (ej: 000017555)
-				
-				// Formato: dmYFVCedula
-				$fechaFormateada = date('dmY', strtotime($fecha));
-				return $fechaFormateada . 'F' . $tipoPersona . $cedula;
-			}
-		}
+		// Procesar diferentes formatos de referencias bancarias
+	
+	// Formato 1: TRA + [V/J/E] + cedula + referencia
+	if (strpos($descripcion, 'TRA') === 0) {
+		// Estructura: TRA + [V/J/E] + [00/000] + cedula + referencia
+		// Ejemplos: 
+		// - TRAV0030019249000017555 (TRA + V00 + 30019249 + 000017555)
+		// - TRAJ00014228714000020968 (TRA + J000 + 14228714 + 000020968)
+		// - TRAE0012345678000098765 (TRA + E00 + 12345678 + 000098765)
 		
-		// Si no inicia con TRA, usar columna alternativa
+		$patron = '/^TRA([VJE])0*(\d+)(\d{9})$/';
+		if (preg_match($patron, $descripcion, $matches)) {
+			$tipoPersona = $matches[1]; // V, J o E
+			$cedula = $matches[2];      // cedula (ej: 30019249)
+			$referencia = $matches[3];  // referencia (ej: 000017555)
+			
+			// Formato: dmYFVCedula
+			$fechaFormateada = date('dmY', strtotime($fecha));
+			return $fechaFormateada . 'F' . $tipoPersona . $cedula;
+		}
+	}
+	
+	// Formato 2: TPBW + [V/J/E] + cedula + referencia (ignorar referencia)
+	if (strpos($descripcion, 'TPBW') === 0) {
+		// Estructura: TPBW + espacio + [V/J/E] + [00/000] + cedula + espacio + referencia
+		// Ejemplo: TPBW V0010962793 01080
+		
+		$patron = '/^TPBW\s+([VJE])0*(\d+)\s+\d+$/';
+		if (preg_match($patron, $descripcion, $matches)) {
+			$tipoPersona = $matches[1]; // V, J o E
+			$cedula = $matches[2];      // cedula (ej: 10962793)
+			
+			// Formato: dmYFVCedula
+			$fechaFormateada = date('dmY', strtotime($fecha));
+			return $fechaFormateada . 'F' . $tipoPersona . $cedula;
+		}
+	}
+	
+	// Formato 3: CR.I/REC + codigo + [V/J/E] + cedula
+	if (strpos($descripcion, 'CR.I/REC') === 0) {
+		// Estructura: CR.I/REC + espacio + codigo + espacio + [V/J/E] + [0/00] + cedula
+		// Ejemplo: CR.I/REC 0105 V010762773
+		
+		$patron = '/^CR\.I\/REC\s+\d+\s+([VJE])0*(\d+)$/';
+		if (preg_match($patron, $descripcion, $matches)) {
+			$tipoPersona = $matches[1]; // V, J o E
+			$cedula = $matches[2];      // cedula (ej: 10762773)
+			
+			// Formato: dmYFVCedula
+			$fechaFormateada = date('dmY', strtotime($fecha));
+			return $fechaFormateada . 'F' . $tipoPersona . $cedula;
+		}
+	}
+	
+	// Si no coincide con ningún formato especial, usar columna alternativa
 		// Limpiar comilla inicial y remover ceros a la izquierda: '0000139740 -> 139740
 		$columnaLimpia = ltrim($columnaAlternativa, "'"); // Remover comilla inicial
 		$referencia = ltrim($columnaLimpia, '0'); // Remover ceros a la izquierda
