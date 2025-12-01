@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', function () {
     
     // Solo ocultar la columna si NO tiene permisos de eliminar NI de comentar
     if (!hasDeletePermission && !hasCommentPermission) {
-        hiddenColumns.push(9); // Columna de acciones
+        hiddenColumns.push(10); // Columna de acciones (ahora es índice 10)
     }
 
     tableTransaction = $('#transaction-list-table').DataTable({
@@ -150,6 +150,28 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }, // 8 - ESTADO
             {
+                data: 'creation_date',
+                render: function (data, type, row) {
+                    if (data && data !== '') {
+                        // Convertir la fecha y hora a formato legible
+                        const dateTime = new Date(data);
+                        if (!isNaN(dateTime.getTime())) {
+                            const day = String(dateTime.getDate()).padStart(2, '0');
+                            const month = String(dateTime.getMonth() + 1).padStart(2, '0');
+                            const year = dateTime.getFullYear();
+                            const hours = String(dateTime.getHours()).padStart(2, '0');
+                            const minutes = String(dateTime.getMinutes()).padStart(2, '0');
+                            
+                            return `<div class="text-center">
+                                        <div class="fw-bold">${day}/${month}/${year}</div>
+                                        <small class="text-muted">${hours}:${minutes}</small>
+                                    </div>`;
+                        }
+                    }
+                    return '<span class="text-muted">-</span>';
+                }
+            }, // 9 - FECHA DE REGISTRO
+            {
                 data: null,
                 orderable: false,
                 searchable: false,
@@ -215,7 +237,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     return actions;
                 },
                 className: 'text-center'
-            } // 9 - Acciones (Comentarios + Eliminar)
+            } // 10 - Acciones (Comentarios + Eliminar)
         ],
         columnDefs: [
             { targets: hiddenColumns, visible: false }, // Ocultar bank, account

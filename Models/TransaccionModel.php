@@ -116,7 +116,7 @@
 			
 			$sql = "SELECT m.id, b.name as bank, m.account, m.responsible, m.reference, m.date, m.amount, 
 						m.status_id, s.name as status_name, s.description as status_description, 
-						u.id as id_user, u.name as name_user
+						u.id as id_user, u.name as name_user, m.creation_date
 					FROM $table m
 					LEFT JOIN usuario u ON u.id = m.assignment
 					LEFT JOIN banco b ON b.id_bank = m.bank AND b.`account` = m.`account`

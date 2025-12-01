@@ -286,6 +286,7 @@ ob_start();
                                     <th>RESPONSABLE</th>
                                     <th>ASIGNADO</th>
                                     <th>ESTADO</th>
+                                    <th>FECHA REGISTRO</th>
                                     <th>ACCIONES</th>
                                 </tr>
                             </thead>
