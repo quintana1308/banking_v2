@@ -3378,6 +3378,62 @@ class Transaccion extends Controllers{
 	}
 
 	/**
+	 * Eliminar un comentario existente
+	 */
+	public function deleteComment()
+	{
+		// Verificar que sea una petición POST
+		if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+			echo json_encode(['status' => false, 'message' => 'Método no permitido'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		// Verificar que el usuario esté logueado
+		if (!isset($_SESSION['idUser'])) {
+			echo json_encode(['status' => false, 'message' => 'Usuario no autenticado'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$userId = intval($_SESSION['idUser']);
+
+		// Verificar permisos de comentarios
+		$commentModel = new CommentModel();
+		if (!$commentModel->canUserComment($userId)) {
+			echo json_encode(['status' => false, 'message' => 'No tienes permisos para eliminar comentarios'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		// Obtener datos del POST
+		$input = json_decode(file_get_contents('php://input'), true);
+		
+		if (!$input || !isset($input['comment_id'])) {
+			echo json_encode(['status' => false, 'message' => 'Datos incompletos'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$commentId = intval($input['comment_id']);
+
+		if ($commentId <= 0) {
+			echo json_encode(['status' => false, 'message' => 'ID de comentario inválido'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		// Eliminar el comentario (incluye validación de propietario)
+		$deleted = $commentModel->deleteComment($commentId, $userId);
+		
+		if (!$deleted) {
+			echo json_encode(['status' => false, 'message' => 'No se pudo eliminar el comentario. Verifica que seas el propietario.'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		echo json_encode([
+			'status' => true,
+			'message' => 'Comentario eliminado exitosamente'
+		], JSON_UNESCAPED_UNICODE);
+		die();
+	}
+
+	/**
 	 * Exportar transacciones filtradas a Excel
 	 * Exporta exactamente los datos que están visibles en la tabla con filtros aplicados
 	 */

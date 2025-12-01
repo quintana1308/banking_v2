@@ -389,11 +389,18 @@ ob_start();
                                             (Editado <span id="editedDate"></span>)
                                         </span>
                                     </small>
-                                    <button type="button" id="editCommentBtn" class="btn btn-sm d-none" 
-                                            style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; color: #fff; font-weight: 500; padding: 0.25rem 0.75rem;">
-                                        <i class="fas fa-edit me-1"></i>
-                                        Editar
-                                    </button>
+                                    <div class="d-flex gap-2">
+                                        <button type="button" id="editCommentBtn" class="btn btn-sm d-none" 
+                                                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; color: #fff; font-weight: 500; padding: 0.25rem 0.75rem;">
+                                            <i class="fas fa-edit me-1"></i>
+                                            Editar
+                                        </button>
+                                        <button type="button" id="deleteCommentBtn" class="btn btn-sm d-none" 
+                                                style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); border: none; color: #fff; font-weight: 500; padding: 0.25rem 0.75rem;">
+                                            <i class="fas fa-trash me-1"></i>
+                                            Eliminar
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>

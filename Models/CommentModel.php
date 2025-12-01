@@ -180,6 +180,43 @@ class CommentModel extends Mysql
     }
 
     /**
+     * Eliminar un comentario existente
+     * @param int $commentId ID del comentario
+     * @param int $userId ID del usuario que intenta eliminar
+     * @return bool
+     */
+    public function deleteComment($commentId, $userId)
+    {
+        // Verificar que el usuario es el propietario del comentario
+        $sql = "SELECT cc.user_id, cc.conciliation_id, cc.empresa_id 
+                FROM conciliation_comment cc 
+                WHERE cc.comment_id = $commentId";
+        
+        $commentInfo = $this->select($sql);
+        
+        if (!$commentInfo) {
+            return false; // Comentario no encontrado
+        }
+        
+        // Verificar que el usuario actual es el propietario
+        if (intval($commentInfo['user_id']) !== intval($userId)) {
+            return false; // No es el propietario
+        }
+        
+        // Eliminar primero la relación en conciliation_comment
+        $sql = "DELETE FROM conciliation_comment WHERE comment_id = $commentId";
+        $deleteRelation = $this->delete($sql);
+        
+        if ($deleteRelation) {
+            // Eliminar el comentario de la tabla comment
+            $sql = "DELETE FROM comment WHERE id = $commentId";
+            return $this->delete($sql);
+        }
+        
+        return false;
+    }
+
+    /**
      * Obtener comentarios de múltiples transacciones de forma optimizada
      * @param array $transactionIds Array de IDs de transacciones
      * @return array Mapa de transaction_id => tiene_comentario (boolean)

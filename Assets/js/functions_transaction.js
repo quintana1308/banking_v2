@@ -996,11 +996,13 @@ document.addEventListener('DOMContentLoaded', function () {
             $('#editedIndicator').addClass('d-none');
         }
         
-        // Mostrar botón de editar solo si el usuario es el propietario
+        // Mostrar botones de editar y eliminar solo si el usuario es el propietario
         if (parseInt(comment.user_id) === parseInt(currentUserId)) {
             $('#editCommentBtn').removeClass('d-none');
+            $('#deleteCommentBtn').removeClass('d-none');
         } else {
             $('#editCommentBtn').addClass('d-none');
+            $('#deleteCommentBtn').addClass('d-none');
         }
         
         $('#viewCommentSection').removeClass('d-none');
@@ -1300,6 +1302,105 @@ document.addEventListener('DOMContentLoaded', function () {
         .finally(() => {
             // Restaurar botón
             btnUpdate.html(originalHTML).prop('disabled', false);
+        });
+    });
+
+    // Event listener para eliminar comentario
+    $(document).on('click', '#deleteCommentBtn', function() {
+        // Mostrar confirmación antes de eliminar
+        Swal.fire({
+            title: '¿Estás seguro?',
+            text: 'Esta acción no se puede deshacer. El comentario será eliminado permanentemente.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+            background: 'rgba(13, 17, 23, 0.95)',
+            color: '#f0f6fc',
+            iconColor: '#ffc107'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Proceder con la eliminación
+                const btnDelete = $(this);
+                const originalHTML = btnDelete.html();
+                
+                // Mostrar indicador de carga
+                btnDelete.html('<i class="fas fa-spinner fa-spin me-1"></i>Eliminando...').prop('disabled', true);
+                
+                fetch(base_url + '/transaccion/deleteComment', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        comment_id: currentCommentId
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error("Error HTTP: " + response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.status) {
+                        Swal.fire({
+                            title: '¡Eliminado!',
+                            text: data.message,
+                            icon: 'success',
+                            timer: 2000,
+                            timerProgressBar: true,
+                            showConfirmButton: false,
+                            background: 'rgba(13, 17, 23, 0.95)',
+                            color: '#f0f6fc',
+                            iconColor: '#28a745'
+                        });
+
+                        // Cerrar modal
+                        $('#commentModal').modal('hide');
+                        
+                        // Actualizar botón en la tabla (cambiar a "agregar comentario")
+                        if (window.currentCommentButton) {
+                            updateCommentButton(window.currentCommentButton, false);
+                        }
+                        
+                        // Recargar tabla para actualizar indicadores
+                        if (tableTransaction) {
+                            tableTransaction.ajax.reload(null, false);
+                        }
+                        
+                    } else {
+                        Swal.fire({
+                            title: 'Error',
+                            text: data.message,
+                            icon: 'error',
+                            background: 'rgba(13, 17, 23, 0.95)',
+                            color: '#f0f6fc',
+                            iconColor: '#dc3545',
+                            confirmButtonColor: '#dc3545',
+                            confirmButtonText: 'Entendido'
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                    Swal.fire({
+                        title: 'Error',
+                        text: 'Error al eliminar comentario: ' + error.message,
+                        icon: 'error',
+                        background: 'rgba(13, 17, 23, 0.95)',
+                        color: '#f0f6fc',
+                        iconColor: '#dc3545',
+                        confirmButtonColor: '#dc3545',
+                        confirmButtonText: 'Entendido'
+                    });
+                })
+                .finally(() => {
+                    // Restaurar botón
+                    btnDelete.html(originalHTML).prop('disabled', false);
+                });
+            }
         });
     });
 
