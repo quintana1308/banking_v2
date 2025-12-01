@@ -46,7 +46,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 d.bank = $('#filtroBank').val();
                 d.account = $('#filtroAccount').val();
                 d.reference = $('#filtroReference').val();
-                d.date = $('#filtroDate').val();
+                d.dateFrom = $('#filtroDateFrom').val();
+                d.dateTo = $('#filtroDateTo').val();
                 d.estado = $('#filtroEstado').val();
                 d.monto = $('#filtroMonto').val();
             }
@@ -247,6 +248,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+
     // Event listener se agregará después de la inicialización
 
     // Función para recargar el DataTable
@@ -296,7 +298,8 @@ document.addEventListener('DOMContentLoaded', function () {
             bank: $('#filtroBank').val() || '',
             account: $('#filtroAccount').val() || '',
             reference: $('#filtroReference').val() || '',
-            date: $('#filtroDate').val() || '',
+            dateFrom: $('#filtroDateFrom').val() || '',
+            dateTo: $('#filtroDateTo').val() || '',
             estado: $('#filtroEstado').val() || '',
             monto: $('#filtroMonto').val() || ''
         };
@@ -430,8 +433,8 @@ document.addEventListener('DOMContentLoaded', function () {
         tableTransaction.ajax.reload();
     });
 
-    // Para los demás select
-    $('#filtroAccount, #filtroDate, #filtroEstado').on('change', function () {
+    // Para los demás select y campos de fecha
+    $('#filtroAccount, #filtroDateFrom, #filtroDateTo, #filtroEstado').on('change', function () {
         tableTransaction.ajax.reload();
     });
 

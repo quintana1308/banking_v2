@@ -60,7 +60,8 @@ class Transaccion extends Controllers{
 			'bank'     => $_GET['bank']     ?? '',
 			'account'  => $_GET['account']  ?? '',
 			'reference'=> $_GET['reference']?? '',
-			'date'     => $_GET['date']     ?? '',
+			'dateFrom' => $_GET['dateFrom'] ?? '',
+			'dateTo'   => $_GET['dateTo']   ?? '',
 			'estado'   => $_GET['estado']    ?? '',
 			'monto'    => $_GET['monto']     ?? '',
 		];
@@ -3418,7 +3419,8 @@ class Transaccion extends Controllers{
 				'bank'     => $input['bank']     ?? '',
 				'account'  => $input['account']  ?? '',
 				'reference'=> $input['reference']?? '',
-				'date'     => $input['date']     ?? '',
+				'dateFrom' => $input['dateFrom'] ?? '',
+				'dateTo'   => $input['dateTo']   ?? '',
 				'estado'   => $input['estado']   ?? '',
 				'monto'    => $input['monto']    ?? '',
 			];

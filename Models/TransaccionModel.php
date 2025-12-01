@@ -44,9 +44,17 @@
 				$reference = $filters['reference'];
 				$where .= " AND m.reference LIKE '%$reference%'";
 			}
-			if (!empty($filters['date'])) {
-				$date = $filters['date'];
-				$where .= " AND m.date LIKE '%$date%'";
+			// Filtro por rango de fechas
+			if (!empty($filters['dateFrom']) && !empty($filters['dateTo'])) {
+				$dateFrom = $filters['dateFrom'];
+				$dateTo = $filters['dateTo'];
+				$where .= " AND m.date BETWEEN '$dateFrom' AND '$dateTo'";
+			} elseif (!empty($filters['dateFrom'])) {
+				$dateFrom = $filters['dateFrom'];
+				$where .= " AND m.date >= '$dateFrom'";
+			} elseif (!empty($filters['dateTo'])) {
+				$dateTo = $filters['dateTo'];
+				$where .= " AND m.date <= '$dateTo'";
 			}
 			
 			// 👇 NUEVA LÓGICA DEL FILTRO DE CONSOLIDACIÓN CON STATUS_ID

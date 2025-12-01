@@ -73,8 +73,9 @@ ob_start();
                     </div>
                 </div>
                 <div class="card-body p-4">
+                    <!-- Primera fila de filtros -->
                     <div class="row g-3">
-                        <div class="col-md-2">
+                        <div class="col-xl-3 col-lg-4 col-md-6 col-sm-12">
                             <div class="form-group-futuristic">
                                 <label class="form-label-futuristic">
                                     <i class="fas fa-university me-2"></i>
@@ -88,7 +89,7 @@ ob_start();
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-xl-3 col-lg-4 col-md-6 col-sm-12">
                             <div class="form-group-futuristic">
                                 <label class="form-label-futuristic">
                                     <i class="fas fa-credit-card me-2"></i>
@@ -102,7 +103,35 @@ ob_start();
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-xl-3 col-lg-4 col-md-6 col-sm-12">
+                            <div class="form-group-futuristic">
+                                <label class="form-label-futuristic">
+                                    <i class="fas fa-calendar-alt me-2"></i>
+                                    Fecha Desde
+                                </label>
+                                <div class="input-container">
+                                    <input type="date" id="filtroDateFrom" class="form-control-futuristic">
+                                    <div class="input-border"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xl-3 col-lg-4 col-md-6 col-sm-12">
+                            <div class="form-group-futuristic">
+                                <label class="form-label-futuristic">
+                                    <i class="fas fa-calendar-check me-2"></i>
+                                    Fecha Hasta
+                                </label>
+                                <div class="input-container">
+                                    <input type="date" id="filtroDateTo" class="form-control-futuristic">
+                                    <div class="input-border"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Segunda fila de filtros -->
+                    <div class="row g-3 mt-2">
+                        <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12">
                             <div class="form-group-futuristic">
                                 <label class="form-label-futuristic">
                                     <i class="fas fa-hashtag me-2"></i>
@@ -114,19 +143,7 @@ ob_start();
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-2">
-                            <div class="form-group-futuristic">
-                                <label class="form-label-futuristic">
-                                    <i class="fas fa-calendar me-2"></i>
-                                    Fecha
-                                </label>
-                                <div class="input-container">
-                                    <input type="date" id="filtroDate" class="form-control-futuristic">
-                                    <div class="input-border"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-2">
+                        <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12">
                             <div class="form-group-futuristic">
                                 <label class="form-label-futuristic">
                                     <i class="fas fa-dollar-sign me-2"></i>
@@ -138,7 +155,7 @@ ob_start();
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12">
                             <div class="form-group-futuristic">
                                 <label class="form-label-futuristic">
                                     <i class="fas fa-check-circle me-2"></i>
