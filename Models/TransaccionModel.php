@@ -116,7 +116,7 @@
 			
 			$sql = "SELECT m.id, b.name as bank, m.account, m.responsible, m.reference, m.date, m.amount, 
 						m.status_id, s.name as status_name, s.description as status_description, 
-						u.id as id_user, u.name as name_user, m.creation_date
+						u.id as id_user, u.name as name_user, m.creation_date, m.assignment
 					FROM $table m
 					LEFT JOIN usuario u ON u.id = m.assignment
 					LEFT JOIN banco b ON b.id_bank = m.bank AND b.`account` = m.`account`
@@ -124,6 +124,59 @@
 					$where";
 					
 			return $this->select_all($sql);
+		}
+
+		/**
+		 * Desasignar un movimiento
+		 * @param int $movimientoId ID del movimiento
+		 * @param int $userId ID del usuario que intenta desasignar
+		 * @return bool
+		 */
+		public function desasignarMovimiento($movimientoId, $userId)
+		{
+			// Obtener la empresa actual del usuario
+			$enterpriseId = $_SESSION['userData']['id_enterprise'] ?? 0;
+			
+			if (!$enterpriseId) {
+				return false;
+			}
+
+			// Obtener información de la empresa para saber qué tabla usar
+			$sqlEnterprise = "SELECT `table` FROM empresa WHERE id = $enterpriseId AND status = 1";
+			$enterprise = $this->select($sqlEnterprise);
+			
+			if (!$enterprise || empty($enterprise['table'])) {
+				return false;
+			}
+
+			$table = $enterprise['table'];
+			
+			// Validar nombre de tabla para prevenir inyección SQL
+			if (!preg_match('/^[a-zA-Z0-9_]+$/', $table)) {
+				return false;
+			}
+
+			// Verificar que el movimiento existe y que el usuario actual es quien lo asignó
+			$sql = "SELECT assignment, status_id FROM `$table` WHERE id = $movimientoId";
+			$movimiento = $this->select($sql);
+			
+			if (!$movimiento) {
+				return false; // Movimiento no encontrado
+			}
+			
+			// Verificar que el usuario actual es quien asignó el movimiento
+			if (intval($movimiento['assignment']) !== intval($userId)) {
+				return false; // No es quien asignó el movimiento
+			}
+			
+			// Verificar que el movimiento está en estado "Asignado" (status_id = 4)
+			if (intval($movimiento['status_id']) !== 4) {
+				return false; // El movimiento no está asignado
+			}
+			
+			// Desasignar el movimiento: assignment = 0, status_id = 1
+			$sql = "UPDATE `$table` SET assignment = ?, status_id = ? WHERE id = ?";
+			return $this->update($sql, [0, 1, $movimientoId]);
 		}
 
 		//OBTENGO TODAS LAS CUENTAS BANCARIAS

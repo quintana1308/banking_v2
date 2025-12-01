@@ -3434,6 +3434,56 @@ class Transaccion extends Controllers{
 	}
 
 	/**
+	 * Desasignar un movimiento
+	 */
+	public function desasignarMovimiento()
+	{
+		// Verificar que sea una petición POST
+		if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+			echo json_encode(['status' => false, 'message' => 'Método no permitido'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		// Verificar que el usuario esté logueado
+		if (!isset($_SESSION['idUser'])) {
+			echo json_encode(['status' => false, 'message' => 'Usuario no autenticado'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$userId = intval($_SESSION['idUser']);
+
+		// Obtener datos del POST
+		$input = json_decode(file_get_contents('php://input'), true);
+		
+		if (!$input || !isset($input['movimiento_id'])) {
+			echo json_encode(['status' => false, 'message' => 'Datos incompletos'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$movimientoId = intval($input['movimiento_id']);
+
+		if ($movimientoId <= 0) {
+			echo json_encode(['status' => false, 'message' => 'ID de movimiento inválido'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		// Desasignar el movimiento (incluye validación de usuario asignador)
+		$transaccionModel = new TransaccionModel();
+		$desasignado = $transaccionModel->desasignarMovimiento($movimientoId, $userId);
+		
+		if (!$desasignado) {
+			echo json_encode(['status' => false, 'message' => 'No se pudo desasignar el movimiento. Verifica que seas quien lo asignó y que esté en estado asignado.'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		echo json_encode([
+			'status' => true,
+			'message' => 'Movimiento desasignado exitosamente'
+		], JSON_UNESCAPED_UNICODE);
+		die();
+	}
+
+	/**
 	 * Exportar transacciones filtradas a Excel
 	 * Exporta exactamente los datos que están visibles en la tabla con filtros aplicados
 	 */

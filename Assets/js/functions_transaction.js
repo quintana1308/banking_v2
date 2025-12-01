@@ -222,6 +222,16 @@ document.addEventListener('DOMContentLoaded', function () {
                         }
                     }
                     
+                    // Botón de desasignar (solo para movimientos asignados por el usuario actual)
+                    if (row.status_id == 4 && row.assignment == currentUserId) {
+                        actions += `<button class="btn btn-warning btn-sm btn-unassign" 
+                                           data-id="${row.id}" 
+                                           title="Desasignar movimiento"
+                                           style="width: 32px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; margin-right: 4px; border-radius: 5px !important;">
+                                        <i class="fas fa-user-times"></i>
+                                    </button>`;
+                    }
+                    
                     // Botón de eliminar
                     if (typeof canDeleteTransactions !== 'undefined' && canDeleteTransactions && row.can_delete) {
                         actions += `<button class="btn btn-danger btn-sm btn-delete" data-id="${row.id}" title="Eliminar transacción"
@@ -862,6 +872,110 @@ document.addEventListener('DOMContentLoaded', function () {
                     
                     // Restaurar el botón
                     btnDelete.html(originalHTML).prop('disabled', false);
+                });
+            }
+        });
+    });
+
+    // Event listener para el botón de desasignar movimientos
+    $('#transaction-list-table tbody').on('click', '.btn-unassign', function () {
+        const id = $(this).data('id');
+        const row = $(this).closest('tr');
+        const rowData = tableTransaction.row(row).data();
+
+        Swal.fire({
+            title: '¿Desasignar movimiento?',
+            html: `
+                <div class="text-start">
+                    <p><strong>Banco:</strong> ${rowData.bank}</p>
+                    <p><strong>Cuenta:</strong> ${rowData.account}</p>
+                    <p><strong>Referencia:</strong> ${rowData.reference}</p>
+                    <p><strong>Monto:</strong> ${rowData.amount}</p>
+                    <p><strong>Asignado a:</strong> ${rowData.name_user}</p>
+                </div>
+                <hr>
+                <p class="text-warning">El movimiento volverá al estado "No Conciliado" y quedará disponible para ser asignado nuevamente.</p>
+            `,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#f39c12',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, desasignar',
+            cancelButtonText: 'Cancelar',
+            background: '#19233adb',
+            color: '#fff',
+            customClass: {
+                popup: 'futuristic-popup'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const btnUnassign = $(this);
+                const originalHTML = btnUnassign.html();
+                
+                // Mostrar indicador de carga
+                btnUnassign.html('<i class="fas fa-spinner fa-spin"></i>').prop('disabled', true);
+                
+                fetch(base_url + '/transaccion/desasignarMovimiento', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ movimiento_id: id })
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error("Error HTTP: " + response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.status) {
+                        Swal.fire({
+                            title: '¡Desasignado!',
+                            text: data.message,
+                            icon: 'success',
+                            timer: 2000,
+                            timerProgressBar: true,
+                            showConfirmButton: false,
+                            background: '#19233adb',
+                            color: '#fff',
+                            customClass: {
+                                popup: 'futuristic-popup'
+                            }
+                        });
+
+                        // Recargar la tabla
+                        tableTransaction.ajax.reload(null, false);
+                    } else {
+                        Swal.fire({
+                            title: 'Error',
+                            text: data.message,
+                            icon: 'error',
+                            background: '#19233adb',
+                            color: '#fff',
+                            customClass: {
+                                popup: 'futuristic-popup'
+                            }
+                        });
+                        
+                        // Restaurar el botón
+                        btnUnassign.html(originalHTML).prop('disabled', false);
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error en fetch:", error);
+                    Swal.fire({
+                        title: 'Error',
+                        text: 'Error en la solicitud: ' + error.message,
+                        icon: 'error',
+                        background: '#19233adb',
+                        color: '#fff',
+                        customClass: {
+                            popup: 'futuristic-popup'
+                        }
+                    });
+                    
+                    // Restaurar el botón
+                    btnUnassign.html(originalHTML).prop('disabled', false);
                 });
             }
         });
