@@ -2592,7 +2592,6 @@ class Transaccion extends Controllers{
 			$rows = $sheet->toArray();
 
 			foreach ($rows as $fila) {
-
 				if (count($fila) == 7) {
 					$result = $this->procesarExcelProvincial2($filePath);
 					return $result;
