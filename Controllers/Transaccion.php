@@ -1693,11 +1693,10 @@ class Transaccion extends Controllers{
 			$rows = $sheet->toArray();
 			
 			foreach ($rows as $fila) {
-
 				if (count($fila) == 13) {
 					$result = $this->procesarExcelVenezuela3($filePath);
 					return $result;
-				}else if (count($fila) > 8) {
+				}else if (count($fila) == 6) {
 					$result = $this->procesarExcelVenezuela2($filePath);
 					return $result;
 				}else if (count($fila) == 8){
@@ -1772,19 +1771,15 @@ class Transaccion extends Controllers{
 			for ($i = 1; $i < count($rows); $i++) {
 				$fila = $rows[$i];
 		
-				$fecha = DateTime::createFromFormat('d-m-Y H:i', $fila[0])->format('Y-m-d');
+				$fecha = DateTime::createFromFormat('d-m-Y - H:i', $fila[0])->format('Y-m-d');
 
-				if ($fila[7] == 'Nota de Crédito') {
-					$monto = $this->parseEuropeanNumber($fila[4]);
-				} else {
-					$monto = $this->parseEuropeanNumber($fila[3]);
-				}
+				$amount = $this->parseEuropeanNumber($fila[4]);
 
 				// Ajusta los índices [0], [1], [2] según el orden de tus columnas
 				$movimientos_transformados[] = [
 					'fecha'      => $fecha,  // Ej: "2024-01-01"
 					'referencia' => $fila[1],  // Ej: "123456"
-					'monto'      => $monto,  // Ej: "100.00"
+					'monto'      => $amount,  // Ej: "100.00"
 				];
 				
 				$totalMovimientos++;
