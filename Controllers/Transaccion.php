@@ -1121,6 +1121,37 @@ class Transaccion extends Controllers{
 		}
 	}
 	
+	// Formato 4: DR OB + [V/J/E] + cedula + codigo (cédula)
+	if (strpos($descripcion, 'DR OB') === 0) {
+		// Estructura: DR OB + espacio + [V/J/E] + cedula + espacio + codigo
+		// Ejemplo: DR OB V12965414 134BANES
+		
+		$patron = '/^DR\s+OB\s+([VJE])(\d+)\s+\w+$/';
+		if (preg_match($patron, $descripcion, $matches)) {
+			$tipoPersona = $matches[1]; // V, J o E
+			$cedula = $matches[2];      // cedula (ej: 12965414)
+			
+			// Formato: dmYFVCedula
+			$fechaFormateada = date('dmY', strtotime($fecha));
+			return $fechaFormateada . 'F' . $tipoPersona . $cedula;
+		}
+	}
+	
+	// Formato 5: DR OB + telefono + codigo (teléfono)
+	if (strpos($descripcion, 'DR OB') === 0) {
+		// Estructura: DR OB + espacio + telefono + espacio + codigo
+		// Ejemplo: DR OB 04245444539 102BAN
+		
+		$patron = '/^DR\s+OB\s+(\d{11})\s+\w+$/';
+		if (preg_match($patron, $descripcion, $matches)) {
+			$telefono = $matches[1]; // telefono (ej: 04245444539)
+			
+			// Formato: dmYFCTelefono (C para teléfono)
+			$fechaFormateada = date('dmY', strtotime($fecha));
+			return $fechaFormateada . 'FC' . $telefono;
+		}
+	}
+	
 	// Si no coincide con ningún formato especial, usar columna alternativa
 		// Limpiar comilla inicial y remover ceros a la izquierda: '0000139740 -> 139740
 		$columnaLimpia = ltrim($columnaAlternativa, "'"); // Remover comilla inicial
@@ -2677,7 +2708,6 @@ class Transaccion extends Controllers{
 			$totalMovimientos = 0;
 			
 			for ($i = 1; $i < 2; $i++) {
-				
 				$fila = $rows[$i];
 				if($fila[1] != ''){
 					$result = $this->procesarExcelProvincialSub1($filePath);
