@@ -836,6 +836,8 @@ class Transaccion extends Controllers{
 					case 'TSR': $movimientosFormat = $this->procesarExcelTesoro($uploadPath); break;
 					case 'PRV': $movimientosFormat = $this->procesarExcelProvincial($uploadPath); break;
 					case 'BAC': $movimientosFormat = $this->procesarExcelBancaribe($uploadPath); break;
+					case 'BTC': $movimientosFormat = $this->procesarExcelBicentenario($uploadPath); break;
+					
 					
 				}
 					// Validación de estructura antes de acceder a ['mov']
@@ -2549,6 +2551,58 @@ class Transaccion extends Controllers{
 				$fila = $rows[$i];
 
 				$fecha = DateTime::createFromFormat('d/m/Y', $fila[1])->format('Y-m-d');
+				
+				$debit = $this->parseEuropeanNumber($fila[5]);
+				$credit = $this->parseEuropeanNumber($fila[6]);
+
+				if ($credit == 0) {
+					$monto = '-'.$debit;
+				} else {
+					$monto = $credit;
+				}
+
+				// Ajusta los índices [0], [1], [2] según el orden de tus columnas
+				$movimientos_transformados[] = [
+					'fecha'      => $fecha,  // Ej: "2024-01-01"
+					'referencia' => $fila[2],  // Ej: "123456"
+					'monto'      => $monto,  // Ej: "100.00"
+				];
+				
+				$totalMovimientos++;
+			}
+
+			return [
+				'total' => $totalMovimientos,
+				'mov' => $movimientos_transformados
+				];
+
+		} catch (Exception $e) {
+			if (file_exists($filePath)) unlink($filePath);
+			echo json_encode([
+				'success' => false,
+				'msg' => 'Archivo Excel esta dañado y/o absoleto.'
+			]);
+			die();
+		}
+	}
+
+	//PROCESO DE BANCO BICENTENARIO (EXCEL)
+	private function procesarExcelBicentenario($filePath)
+	{	
+		
+		try {
+			$spreadsheet = IOFactory::load($filePath);
+			$sheet = $spreadsheet->getActiveSheet();
+			$rows = $sheet->toArray();
+			
+			$movimientos_transformados = [];
+			$totalMovimientos = 0;
+
+			// Asume que la primera fila son los encabezados
+			for ($i = 3; $i < count($rows); $i++) {
+				$fila = $rows[$i];
+
+				$fecha = DateTime::createFromFormat('d-m-Y', $fila[1])->format('Y-m-d');
 				
 				$debit = $this->parseEuropeanNumber($fila[5]);
 				$credit = $this->parseEuropeanNumber($fila[6]);
