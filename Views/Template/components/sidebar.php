@@ -138,7 +138,7 @@ $currentController = explode('/', trim($currentRoute, '/'))[0] ?? 'home';
                         <div class="user-role-sidebar">
                             <?php 
                             $rol = $_SESSION['userData']['ID_ROL'] ?? 0;
-                            echo $rol == 1 ? 'Administrador' : ($rol == 2 ? 'Soportista' : 'Cliente');
+                            echo $rol == 1 ? 'Administrador' : ($rol == 2 ? 'Soportista' : ($rol == 3 ? 'Cliente' : 'Analista'));
                             ?>
                         </div>
                     </div>

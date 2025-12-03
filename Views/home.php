@@ -104,7 +104,7 @@ ob_start();
     </div>
 
     <!-- Contenido principal reorganizado -->
-    <?php if($_SESSION['userData']['ID_ROL'] == 1 || $_SESSION['userData']['ID_ROL'] == 2 || $_SESSION['userData']['ID_ROL'] == 3) { ?>
+    <?php if($_SESSION['userData']['ID_ROL'] == 1 || $_SESSION['userData']['ID_ROL'] == 2 || $_SESSION['userData']['ID_ROL'] == 3 || $_SESSION['userData']['ID_ROL'] == 4) { ?>
     <div class="row g-3 fade-in-up mb-4">
         <div class="col-12">
             <!-- Tabla de movimientos recientes - Compacta -->
@@ -193,7 +193,7 @@ ob_start();
             </div>
         </div>
         <?php } ?>
-        <?php if($_SESSION['userData']['ID_ROL'] == 1 || $_SESSION['userData']['ID_ROL'] == 2 || $_SESSION['userData']['ID_ROL'] == 3) { ?>                        
+        <?php if($_SESSION['userData']['ID_ROL'] == 1 || $_SESSION['userData']['ID_ROL'] == 2 || $_SESSION['userData']['ID_ROL'] == 3 || $_SESSION['userData']['ID_ROL'] == 4) { ?>                        
         <div class="col-lg-6">
             <!-- Tabla de cuentas bancarias - Compacta -->
             <div class="futuristic-card-compact slide-in-left">

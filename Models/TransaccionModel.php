@@ -36,6 +36,12 @@
 
 				$where .= " AND m.bank LIKE '%$id_bank%'";
 			}
+
+			// 👇 FILTRO POR ROL ANALISTA (ocultar montos negativos)
+			$userRole = $_SESSION['userData']['ID_ROL'] ?? 0;
+			if ($userRole == PermissionsHelper::ROLE_ANALYST) {
+				$where .= " AND m.amount >= 0";
+			}
 			if (!empty($filters['account'])) {
 				$account = $filters['account'];
 				$where .= " AND m.account LIKE '%$account%'";

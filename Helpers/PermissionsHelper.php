@@ -8,9 +8,10 @@
 class PermissionsHelper 
 {
     // Definición de roles
-    const ROLE_ADMIN = 1;
+    const ROLE_ADMIN   = 1;
     const ROLE_SUPPORT = 2;
-    const ROLE_CLIENT = 3;
+    const ROLE_CLIENT  = 3;
+    const ROLE_ANALYST = 4;
 
     /**
      * Verifica si el usuario tiene acceso a un módulo específico
@@ -18,16 +19,15 @@ class PermissionsHelper
     public static function hasModuleAccess($module) 
     {
         $userRole = $_SESSION['userData']['ID_ROL'] ?? 0;
-        
         switch($module) {
             case 'dashboard':
-                return in_array($userRole, [self::ROLE_ADMIN, self::ROLE_SUPPORT, self::ROLE_CLIENT]);
+                return in_array($userRole, [self::ROLE_ADMIN, self::ROLE_SUPPORT, self::ROLE_CLIENT, self::ROLE_ANALYST]);
             
             case 'transacciones':
-                return in_array($userRole, [self::ROLE_ADMIN, self::ROLE_SUPPORT, self::ROLE_CLIENT]);
+                return in_array($userRole, [self::ROLE_ADMIN, self::ROLE_SUPPORT, self::ROLE_CLIENT, self::ROLE_ANALYST]);
             
             case 'cuentas_bancarias':
-                return in_array($userRole, [self::ROLE_ADMIN, self::ROLE_SUPPORT, self::ROLE_CLIENT]);
+                return in_array($userRole, [self::ROLE_ADMIN, self::ROLE_SUPPORT, self::ROLE_CLIENT, self::ROLE_ANALYST]);
             
             case 'empresas':
                 return $userRole == self::ROLE_ADMIN;
@@ -147,6 +147,8 @@ class PermissionsHelper
                 return 'Soportista';
             case self::ROLE_CLIENT:
                 return 'Cliente';
+            case self::ROLE_ANALYST:
+                return 'Analista';
             default:
                 return 'Usuario';
         }
