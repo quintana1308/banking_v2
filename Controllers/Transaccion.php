@@ -1069,90 +1069,106 @@ class Transaccion extends Controllers{
 		
 		// Procesar diferentes formatos de referencias bancarias
 	
-	// Formato 1: TRA + [V/J/E] + cedula + referencia
-	if (strpos($descripcion, 'TRA') === 0) {
-		// Estructura: TRA + [V/J/E] + [00/000] + cedula + referencia
-		// Ejemplos: 
-		// - TRAV0030019249000017555 (TRA + V00 + 30019249 + 000017555)
-		// - TRAJ00014228714000020968 (TRA + J000 + 14228714 + 000020968)
-		// - TRAE0012345678000098765 (TRA + E00 + 12345678 + 000098765)
-		
-		$patron = '/^TRA([VJE])0*(\d+)(\d{9})$/';
-		if (preg_match($patron, $descripcion, $matches)) {
-			$tipoPersona = $matches[1]; // V, J o E
-			$cedula = $matches[2];      // cedula (ej: 30019249)
-			$referencia = $matches[3];  // referencia (ej: 000017555)
+		// Formato 1: TRA + [V/J/E] + cedula + referencia
+		if (strpos($descripcion, 'TRA') === 0) {
+			// Estructura: TRA + [V/J/E] + [00/000] + cedula + referencia
+			// Ejemplos: 
+			// - TRAV0030019249000017555 (TRA + V00 + 30019249 + 000017555)
+			// - TRAJ00014228714000020968 (TRA + J000 + 14228714 + 000020968)
+			// - TRAE0012345678000098765 (TRA + E00 + 12345678 + 000098765)
 			
-			// Formato: dmYFVCedula
-			$fechaFormateada = date('dmY', strtotime($fecha));
-			return $fechaFormateada . 'F' . $tipoPersona . $cedula;
+			$patron = '/^TRA([VJE])0*(\d+)(\d{9})$/';
+			if (preg_match($patron, $descripcion, $matches)) {
+				$tipoPersona = $matches[1]; // V, J o E
+				$cedula = $matches[2];      // cedula (ej: 30019249)
+				$referencia = $matches[3];  // referencia (ej: 000017555)
+				
+				// Formato: dmYFVCedula
+				$fechaFormateada = date('dmY', strtotime($fecha));
+				return $fechaFormateada . 'F' . $tipoPersona . $cedula;
+			}
 		}
-	}
 	
-	// Formato 2: TPBW + [V/J/E] + cedula + referencia (ignorar referencia)
-	if (strpos($descripcion, 'TPBW') === 0) {
-		// Estructura: TPBW + espacio + [V/J/E] + [00/000] + cedula + espacio + referencia
-		// Ejemplo: TPBW V0010962793 01080
-		
-		$patron = '/^TPBW\s+([VJE])0*(\d+)\s+\d+$/';
-		if (preg_match($patron, $descripcion, $matches)) {
-			$tipoPersona = $matches[1]; // V, J o E
-			$cedula = $matches[2];      // cedula (ej: 10962793)
+		// Formato 2: TPBW + [V/J/E] + cedula + referencia (ignorar referencia)
+		if (strpos($descripcion, 'TPBW') === 0) {
+			// Estructura: TPBW + espacio + [V/J/E] + [00/000] + cedula + espacio + referencia
+			// Ejemplo: TPBW V0010962793 01080
 			
-			// Formato: dmYFVCedula
-			$fechaFormateada = date('dmY', strtotime($fecha));
-			return $fechaFormateada . 'F' . $tipoPersona . $cedula;
+			$patron = '/^TPBW\s+([VJE])0*(\d+)\s+\d+$/';
+			if (preg_match($patron, $descripcion, $matches)) {
+				$tipoPersona = $matches[1]; // V, J o E
+				$cedula = $matches[2];      // cedula (ej: 10962793)
+				
+				// Formato: dmYFVCedula
+				$fechaFormateada = date('dmY', strtotime($fecha));
+				return $fechaFormateada . 'F' . $tipoPersona . $cedula;
+			}
 		}
-	}
 	
-	// Formato 3: CR.I/REC + codigo + [V/J/E] + cedula
-	if (strpos($descripcion, 'CR.I/REC') === 0) {
-		// Estructura: CR.I/REC + espacio + codigo + espacio + [V/J/E] + [0/00] + cedula
-		// Ejemplo: CR.I/REC 0105 V010762773
-		
-		$patron = '/^CR\.I\/REC\s+\d+\s+([VJE])0*(\d+)$/';
-		if (preg_match($patron, $descripcion, $matches)) {
-			$tipoPersona = $matches[1]; // V, J o E
-			$cedula = $matches[2];      // cedula (ej: 10762773)
+		// Formato 3: CR.I/REC + codigo + [V/J/E] + cedula
+		if (strpos($descripcion, 'CR.I/REC') === 0) {
+			// Estructura: CR.I/REC + espacio + codigo + espacio + [V/J/E] + [0/00] + cedula
+			// Ejemplo: CR.I/REC 0105 V010762773
 			
-			// Formato: dmYFVCedula
-			$fechaFormateada = date('dmY', strtotime($fecha));
-			return $fechaFormateada . 'F' . $tipoPersona . $cedula;
+			$patron = '/^CR\.I\/REC\s+\d+\s+([VJE])0*(\d+)$/';
+			if (preg_match($patron, $descripcion, $matches)) {
+				$tipoPersona = $matches[1]; // V, J o E
+				$cedula = $matches[2];      // cedula (ej: 10762773)
+				
+				// Formato: dmYFVCedula
+				$fechaFormateada = date('dmY', strtotime($fecha));
+				return $fechaFormateada . 'F' . $tipoPersona . $cedula;
+			}
 		}
-	}
 	
-	// Formato 4: DR OB + [V/J/E] + cedula + codigo (cédula)
-	if (strpos($descripcion, 'DR OB') === 0) {
-		// Estructura: DR OB + espacio + [V/J/E] + cedula + espacio + codigo
-		// Ejemplo: DR OB V12965414 134BANES
-		
-		$patron = '/^DR\s+OB\s+([VJE])(\d+)\s+\w+$/';
-		if (preg_match($patron, $descripcion, $matches)) {
-			$tipoPersona = $matches[1]; // V, J o E
-			$cedula = $matches[2];      // cedula (ej: 12965414)
+		// Formato 4: ABO + [V/J/E] + cedula
+		if (strpos($descripcion, 'ABO') === 0) {
+			// Estructura: ABO + punto + DR + [V/J/E] + [0/00] + cedula
+			// Ejemplo: ABO.DRV0019284430
 			
-			// Formato: dmYFVCedula
-			$fechaFormateada = date('dmY', strtotime($fecha));
-			return $fechaFormateada . 'F' . $tipoPersona . $cedula;
+			$patron = '/^ABO\.DR([VJE])0*(\d+)$/';
+			if (preg_match($patron, $descripcion, $matches)) {
+				$tipoPersona = $matches[1]; // V, J o E
+				$cedula = $matches[2];      // cedula (ej: 19284430)
+				
+				// Formato: dmYFVCedula
+				$fechaFormateada = date('dmY', strtotime($fecha));
+				return $fechaFormateada . 'F' . $tipoPersona . $cedula;
+			}
 		}
-	}
-	
-	// Formato 5: DR OB + telefono + codigo (teléfono)
-	if (strpos($descripcion, 'DR OB') === 0) {
-		// Estructura: DR OB + espacio + telefono + espacio + codigo
-		// Ejemplo: DR OB 04245444539 102BAN
-		
-		$patron = '/^DR\s+OB\s+(\d{11})\s+\w+$/';
-		if (preg_match($patron, $descripcion, $matches)) {
-			$telefono = $matches[1]; // telefono (ej: 04245444539)
+
+		// Formato 5: DR OB + [V/J/E] + cedula + codigo (cédula)
+		if (strpos($descripcion, 'DR OB') === 0) {
+			// Estructura: DR OB + espacio + [V/J/E] + cedula + espacio + codigo
+			// Ejemplo: DR OB V12965414 134BANES
 			
-			// Formato: dmYFCTelefono (C para teléfono)
-			$fechaFormateada = date('dmY', strtotime($fecha));
-			return $fechaFormateada . 'FC' . $telefono;
+			$patron = '/^DR\s+OB\s+([VJE])(\d+)\s+\w+$/';
+			if (preg_match($patron, $descripcion, $matches)) {
+				$tipoPersona = $matches[1]; // V, J o E
+				$cedula = $matches[2];      // cedula (ej: 12965414)
+				
+				// Formato: dmYFVCedula
+				$fechaFormateada = date('dmY', strtotime($fecha));
+				return $fechaFormateada . 'F' . $tipoPersona . $cedula;
+			}
 		}
-	}
 	
-	// Si no coincide con ningún formato especial, usar columna alternativa
+		// Formato 6: DR OB + telefono + codigo (teléfono)
+		if (strpos($descripcion, 'DR OB') === 0) {
+			// Estructura: DR OB + espacio + telefono + espacio + codigo
+			// Ejemplo: DR OB 04245444539 102BAN
+			
+			$patron = '/^DR\s+OB\s+(\d{11})\s+\w+$/';
+			if (preg_match($patron, $descripcion, $matches)) {
+				$telefono = $matches[1]; // telefono (ej: 04245444539)
+				
+				// Formato: dmYFCTelefono (C para teléfono)
+				$fechaFormateada = date('dmY', strtotime($fecha));
+				return $fechaFormateada . 'FC' . $telefono;
+			}
+		}
+	
+		// Si no coincide con ningún formato especial, usar columna alternativa
 		// Limpiar comilla inicial y remover ceros a la izquierda: '0000139740 -> 139740
 		$columnaLimpia = ltrim($columnaAlternativa, "'"); // Remover comilla inicial
 		$referencia = ltrim($columnaLimpia, '0'); // Remover ceros a la izquierda
@@ -2810,6 +2826,9 @@ class Transaccion extends Controllers{
 					$totalMovimientos++;
 				
 			}
+
+			dep($movimientos_transformados);
+			exit;
 			
 			return [
 				'total' => $totalMovimientos,
@@ -2881,8 +2900,6 @@ class Transaccion extends Controllers{
 			die();
 		}
 	}
-
-	
 
 	//PROCESO DE BANCO PROVINCIAL (EXCEL - PAGO MOVIL)
 	private function procesarExcelProvincial2($filePath)
